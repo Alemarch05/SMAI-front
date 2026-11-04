@@ -1,0 +1,69 @@
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #4d57c8 0%, #371777 100%);
+  padding: 16px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 32px 40px;
+  border-radius: 36px !important; /* Esquinas muy redondeadas como la imagen */
+  background-color: #e2dcf0 !important; /* Color lavanda claro de la tarjeta */
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3) !important;
+  text-align: center;
+
+  .title {
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: #4b4db8;
+    margin-bottom: 16px;
+  }
+
+  .avatar-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
+
+    .large-avatar-icon {
+      font-size: 110px;       /* Tamaño del vector */
+      width: 110px;           /* Ancho del contenedor */
+      height: 110px;          /* Alto del contenedor */
+      line-height: 110px;     /* Alineación vertical */
+      color: #6366f1;         /* Color azul/violeta */
+    }
+  }
+
+  .full-width {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .forgot-container {
+    text-align: right;
+    margin-bottom: 24px;
+
+    .forgot-link {
+      color: #3b82f6;
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 0.9rem;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .submit-btn {
+    height: 48px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 24px !important; /* Botón en forma de píldora redondeada */
+    background: linear-gradient(135deg, #5b3fa3 0%, #3b2875 100%) !important;
+    color: #ffffff;
+  }
+}

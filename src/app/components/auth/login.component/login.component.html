@@ -1,0 +1,54 @@
+<div class="login-container">
+  <mat-card class="login-card">
+    
+    <h1 class="title">SAEC</h1>
+
+    <!-- Ícono avatar ampliado -->
+    <div class="avatar-container">
+      <mat-icon class="large-avatar-icon">account_circle</mat-icon>
+    </div>
+
+    <!-- Formulario reactivo -->
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      
+      <!-- Campo Usuario / Email -->
+      <mat-form-field appearance="fill" class="full-width">
+        <mat-label>Usuario</mat-label>
+        <input matInput type="email" formControlName="email">
+        <mat-error *ngIf="loginForm.get('email')?.hasError('required')">El correo es obligatorio</mat-error>
+        <mat-error *ngIf="loginForm.get('email')?.hasError('email')">Ingresa un correo válido</mat-error>
+      </mat-form-field>
+
+      <!-- Campo Contraseña -->
+      <mat-form-field appearance="fill" class="full-width">
+        <mat-label>Contraseña</mat-label>
+        <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password">
+        
+        <!-- IMPORTANTE: type="button" evita que el ojo envíe el formulario -->
+        <button 
+          mat-icon-button 
+          matSuffix 
+          type="button"
+          (click)="hidePassword = !hidePassword" 
+          [attr.aria-label]="'Ocultar contraseña'">
+          <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+        <mat-error *ngIf="loginForm.get('password')?.hasError('required')">La contraseña es obligatoria</mat-error>
+      </mat-form-field>
+
+  
+
+      <!-- Botón de Envío -->
+      <button 
+        mat-raised-button 
+        color="primary" 
+        type="submit" 
+        class="full-width submit-btn" 
+        [disabled]="loginForm.invalid || isLoading">
+        <span *ngIf="!isLoading">Ingresar</span>
+        <mat-spinner diameter="24" *ngIf="isLoading"></mat-spinner>
+      </button>
+
+    </form>
+  </mat-card>
+</div>

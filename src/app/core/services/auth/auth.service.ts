@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { environment } from '../../../../environments/environment';
 import {LoginResponse, LoginCredentials} from "../../interfaces/auth/auth.interface";
 
 @Injectable({
@@ -35,21 +35,24 @@ export class AuthService {
   }
 
   login(credentials: LoginCredentials): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, credentials).pipe(
-      tap((response: LoginResponse) => {
-        if (isPlatformBrowser(this.platformId)) {
-          // Guardar el token en el almacenamiento local
-          localStorage.setItem('access_token', response.access_token);
-          
-          if (response.user) {
-            localStorage.setItem('user', JSON.stringify(response.user));
-          }
+  return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, credentials).pipe(
+    tap((response: LoginResponse) => {
+      if (isPlatformBrowser(this.platformId)) {
+        // Accedemos a response.data.access_token
+        const token = response.data.access_token;
+        const user = response.data.user;
+
+        if (token) {
+          localStorage.setItem('access_token', token);
         }
-        // Notificar a toda la app que el usuario está autenticado
-        this.authState.next(true);
-      })
-    );
-  }
+        if (user) {
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+      }
+      this.authState.next(true);
+    })
+  );
+}
 
 
   getToken(): string | null {

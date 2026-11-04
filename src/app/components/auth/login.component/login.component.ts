@@ -42,7 +42,7 @@ export class LoginComponent {
       next: () => {
         this.isLoading = false;
         this.snackBar.open('¡Inicio de sesión exitoso!', 'Cerrar', { duration: 3000 });
-        this.router.navigate(['/categories']);
+        this.router.navigate(['/']);
       },
       error: (err: HttpErrorResponse) => {
         this.isLoading = false;

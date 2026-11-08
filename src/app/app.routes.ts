@@ -21,6 +21,31 @@ export const routes: Routes = [
       { path: 'enlace1', component: Enlace1Component },
       { path: 'enlace2', component: Enlace2Component },
 
+      // Módulo de Soporte al Cliente - Fase 1 (Lazy Loading)
+      {
+        path: 'customer/support',
+        loadComponent: () =>
+          import('./customer/components/category-selection/category-selection.component').then(
+            (m) => m.CategorySelectionComponent
+          )
+      },
+      { path: 'soporte', redirectTo: 'customer/support', pathMatch: 'full' },
+
+      // Panel de Soporte TI - Fase 2 (Lazy Loading)
+      {
+        path: 'support/tickets',
+        loadComponent: () =>
+          import('./support/components/ticket-list/ticket-list.component').then(
+            (m) => m.TicketListComponent
+          )
+      },
+      {
+        path: 'support/history',
+        loadComponent: () =>
+          import('./support/components/ticket-history/ticket-history.component').then(
+            (m) => m.TicketHistoryComponent
+          )
+      }
     ]
   },
 

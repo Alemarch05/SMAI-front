@@ -1,72 +1,109 @@
-<section class="category-selection">
+<div class="support-page">
+  <mat-card class="support-card">
+    <!-- Encabezado de la tarjeta -->
+    <header class="support-card__header">
+      <div class="support-card__icon-badge" aria-hidden="true">
+        <mat-icon>support_agent</mat-icon>
+      </div>
+      <div class="support-card__titles">
+        <h1 class="support-card__title">Soporte Técnico al Cliente</h1>
+        <p class="support-card__subtitle">
+          Complete la información de su requerimiento para generar un ticket de atención
+        </p>
+      </div>
+    </header>
 
-  <!-- Encabezado -->
-  <div class="category-selection__header">
-    <mat-icon class="category-selection__icon">category</mat-icon>
-    <div>
-      <h2 class="category-selection__title">Selección de Categorías</h2>
-      <p class="category-selection__subtitle">Complete los datos de la incidencia presentada</p>
-    </div>
-  </div>
-
-  <mat-divider class="category-selection__divider"></mat-divider>
-
-  <!-- Spinner de carga -->
-  @if (isLoading) {
-    <div class="category-selection__loading">
-      <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
-      <p>Cargando categorías...</p>
-    </div>
-  } @else {
-
-    <form [formGroup]="form" class="category-selection__form">
-
-      <!-- Selector de Ubicación -->
-      <mat-form-field appearance="outline" class="category-selection__field">
-        <mat-label>Ubicación</mat-label>
-        <mat-select formControlName="locationId" placeholder="Seleccione una ubicación">
-          @for (location of locations; track location.id) {
-            <mat-option [value]="location.id">{{ location.name }}</mat-option>
-          }
-        </mat-select>
-        <mat-icon matPrefix>location_on</mat-icon>
-        @if (form.get('locationId')?.hasError('required') && form.get('locationId')?.touched) {
-          <mat-error>La ubicación es obligatoria</mat-error>
-        }
-      </mat-form-field>
-
-      <!-- Selector de Incidencia -->
-      <mat-form-field appearance="outline" class="category-selection__field">
-        <mat-label>Incidencia Presentada</mat-label>
-        <mat-select
-          formControlName="incidenceId"
-          placeholder="Seleccione el tipo de incidencia"
-          [disabled]="!form.get('locationId')?.value">
-          @if (filteredIncidences.length === 0) {
-            <mat-option disabled>
-              {{ form.get('locationId')?.value ? 'No hay incidencias para esta ubicación' : 'Primero seleccione una ubicación' }}
-            </mat-option>
-          }
-          @for (incidence of filteredIncidences; track incidence.id) {
-            <mat-option [value]="incidence.id">{{ incidence.name }}</mat-option>
-          }
-        </mat-select>
-        <mat-icon matPrefix>report_problem</mat-icon>
-        @if (form.get('incidenceId')?.hasError('required') && form.get('incidenceId')?.touched) {
-          <mat-error>La incidencia es obligatoria</mat-error>
-        }
-      </mat-form-field>
-
-    </form>
-
-    <!-- Resumen de selección -->
-    @if (form.valid) {
-      <div class="category-selection__summary">
-        <mat-icon class="category-selection__summary-icon">check_circle</mat-icon>
-        <span>Categoría seleccionada correctamente</span>
+    <!-- Indicador informativo si existe diagnóstico previo de Nivel 1 -->
+    @if (activeDiagnostic()) {
+      <div class="diagnostic-banner" role="status">
+        <mat-icon class="diagnostic-banner__icon">verified</mat-icon>
+        <span>Diagnóstico preliminar de Nivel 1 adjunto a esta solicitud.</span>
       </div>
     }
 
-  }
+    <!-- Estado de carga inicial de categorías -->
+    @if (isLoadingCategories()) {
+      <div class="loading-state" aria-live="polite">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Cargando catálogo de soporte...</p>
+      </div>
+    } @else {
+      <form
+        [formGroup]="ticketForm"
+        (ngSubmit)="onSubmit()"
+        class="support-form"
+        novalidate>
 
-</section>
+        <!-- Control 1: Ubicación -->
+        <mat-form-field appearance="fill" class="clean-field">
+          <mat-label>Ubicación</mat-label>
+          <mat-select
+            formControlName="location"
+            placeholder="Seleccione su ubicación">
+            @for (loc of locations(); track loc.name) {
+              <mat-option [value]="loc.name">{{ loc.name }}</mat-option>
+            }
+          </mat-select>
+          @if (ticketForm.controls.location.hasError('required') && ticketForm.controls.location.touched) {
+            <mat-error>Seleccione la ubicación donde se presenta el requerimiento</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Control 2: Incidencia presentada (category_id) -->
+        <mat-form-field appearance="fill" class="clean-field">
+          <mat-label>Incidencia presentada</mat-label>
+          <mat-select
+            formControlName="category_id"
+            placeholder="Seleccione el tipo de incidencia">
+            @if (filteredCategories().length === 0) {
+              <mat-option disabled>No hay categorías disponibles en este momento</mat-option>
+            }
+            @for (category of filteredCategories(); track category.id) {
+              <mat-option [value]="category.id">{{ category.name }}</mat-option>
+            }
+          </mat-select>
+          @if (ticketForm.controls.category_id.hasError('required') && ticketForm.controls.category_id.touched) {
+            <mat-error>Seleccione la incidencia presentada</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Control 3: Descripción de la problemática -->
+        <mat-form-field appearance="fill" class="clean-field clean-field--textarea">
+          <mat-label>Describa la problemática solicitada</mat-label>
+          <textarea
+            matInput
+            formControlName="description"
+            rows="4"
+            maxlength="1000"
+            placeholder="Detalle qué ocurre, desde cuándo se presenta y cualquier mensaje en pantalla..."></textarea>
+          <mat-hint align="end">{{ ticketForm.controls.description.value.length }} / 1000</mat-hint>
+          @if (ticketForm.controls.description.hasError('required') && ticketForm.controls.description.touched) {
+            <mat-error>La descripción de la problemática es obligatoria</mat-error>
+          } @else if (ticketForm.controls.description.hasError('minlength') && ticketForm.controls.description.touched) {
+            <mat-error>Describa la problemática con al menos 10 caracteres</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Acción principal: Generar Ticket -->
+        <div class="support-form__actions">
+          <button
+            mat-raised-button
+            color="primary"
+            type="submit"
+            class="submit-btn"
+            [disabled]="ticketForm.invalid || isSubmitting()">
+            @if (isSubmitting()) {
+              <span class="submit-btn__loading">
+                <mat-spinner diameter="20" class="submit-btn__spinner"></mat-spinner>
+                <span>Generando Ticket...</span>
+              </span>
+            } @else {
+              <span>Generar Ticket</span>
+            }
+          </button>
+        </div>
+
+      </form>
+    }
+  </mat-card>
+</div>

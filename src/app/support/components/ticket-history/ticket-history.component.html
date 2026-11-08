@@ -1,0 +1,141 @@
+<section class="support-panel">
+  <mat-card class="panel-card">
+    <!-- Encabezado del Historial -->
+    <header class="panel-header">
+      <div class="panel-header__brand">
+        <div class="panel-header__icon" aria-hidden="true">
+          <mat-icon>history</mat-icon>
+        </div>
+        <div>
+          <h1 class="panel-header__title">Historial de Tickets</h1>
+          <p class="panel-header__subtitle">
+            Registro histórico de incidencias gestionadas y resoluciones aplicadas
+          </p>
+        </div>
+      </div>
+
+      <div class="panel-header__stats">
+        <div class="stat-pill">
+          <span class="stat-pill__value">{{ totalHistory() }}</span>
+          <span class="stat-pill__label">Registros</span>
+        </div>
+        <div class="stat-pill stat-pill--green">
+          <span class="stat-pill__value">{{ resolvedCount() }}</span>
+          <span class="stat-pill__label">Resueltos</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Buscador rápido y acción de recarga -->
+    <div class="toolbar-row">
+      <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+        <mat-label>Filtrar historial</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input
+          matInput
+          type="text"
+          [value]="searchTerm()"
+          (input)="applyFilter($event)"
+          placeholder="Buscar por fecha, descripción, detalles o estado..." />
+        @if (searchTerm()) {
+          <button
+            matSuffix
+            mat-icon-button
+            type="button"
+            aria-label="Limpiar filtro"
+            (click)="clearSearch()">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+
+      <button
+        mat-stroked-button
+        type="button"
+        class="refresh-btn"
+        [disabled]="isLoading()"
+        (click)="loadHistory()">
+        <mat-icon>refresh</mat-icon>
+        <span>Actualizar</span>
+      </button>
+    </div>
+
+    <!-- Estado de carga -->
+    @if (isLoading()) {
+      <div class="state-box" aria-live="polite">
+        <mat-spinner diameter="42"></mat-spinner>
+        <p>Cargando historial de soporte...</p>
+      </div>
+    } @else {
+      <div class="table-container">
+        <table mat-table [dataSource]="dataSource" matSort class="history-table">
+
+          <!-- Columna: Fecha -->
+          <ng-container matColumnDef="fecha">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha</th>
+            <td mat-cell *matCellDef="let item" class="cell-date">
+              @if (isValidDate(item.fecha)) {
+                {{ item.fecha | date: 'dd/MM/yyyy HH:mm' }}
+              } @else {
+                {{ item.fecha || '—' }}
+              }
+            </td>
+          </ng-container>
+
+          <!-- Columna: Descripción -->
+          <ng-container matColumnDef="descripcion">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Descripción</th>
+            <td mat-cell *matCellDef="let item" class="cell-primary">
+              <span [matTooltip]="item.descripcion">{{ item.descripcion }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Columna: Detalles -->
+          <ng-container matColumnDef="detalles">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Detalles</th>
+            <td mat-cell *matCellDef="let item" class="cell-details">
+              <span [matTooltip]="item.detalles">{{ item.detalles }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Columna: Status -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+            <td mat-cell *matCellDef="let item">
+              <mat-chip-set aria-label="Estado del ticket histórico">
+                <mat-chip class="status-chip" [class]="getStatusClass(item.status)">
+                  {{ item.status }}
+                </mat-chip>
+              </mat-chip-set>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns" class="history-row"></tr>
+
+          <!-- Sin registros -->
+          <tr class="mat-row" *matNoDataRow>
+            <td class="empty-cell" [attr.colspan]="displayedColumns.length">
+              <div class="empty-state">
+                <mat-icon>assignment_turned_in</mat-icon>
+                @if (searchTerm()) {
+                  <p>No se encontraron registros para "{{ searchTerm() }}".</p>
+                } @else {
+                  <p>Aún no existen tickets en el historial.</p>
+                }
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <mat-paginator
+        [pageSizeOptions]="[5, 10, 25]"
+        [pageSize]="10"
+        showFirstLastButtons
+        aria-label="Seleccionar página del historial de tickets">
+      </mat-paginator>
+    }
+  </mat-card>
+</section>
+

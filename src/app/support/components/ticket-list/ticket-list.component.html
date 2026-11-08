@@ -1,0 +1,163 @@
+<section class="support-panel">
+  <mat-card class="panel-card">
+    <!-- Encabezado y métricas rápidas -->
+    <header class="panel-header">
+      <div class="panel-header__brand">
+        <div class="panel-header__icon" aria-hidden="true">
+          <mat-icon>confirmation_number</mat-icon>
+        </div>
+        <div>
+          <h1 class="panel-header__title">Tickets Abiertos</h1>
+          <p class="panel-header__subtitle">
+            Gestión y monitoreo en tiempo real de solicitudes activas en Soporte TI
+          </p>
+        </div>
+      </div>
+
+      <div class="panel-header__stats">
+        <div class="stat-pill">
+          <span class="stat-pill__value">{{ totalTickets() }}</span>
+          <span class="stat-pill__label">Total</span>
+        </div>
+        <div class="stat-pill stat-pill--amber">
+          <span class="stat-pill__value">{{ pendingCount() }}</span>
+          <span class="stat-pill__label">En curso</span>
+        </div>
+        <div class="stat-pill stat-pill--red">
+          <span class="stat-pill__value">{{ highPriorityCount() }}</span>
+          <span class="stat-pill__label">Alta Prioridad</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Barra superior: Buscador dinámico + Actualizar -->
+    <div class="toolbar-row">
+      <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+        <mat-label>Buscar ticket abierto</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input
+          matInput
+          type="text"
+          [value]="searchTerm()"
+          (input)="applyFilter($event)"
+          placeholder="Filtrar por ID, nombre, descripción, prioridad o estado..." />
+        @if (searchTerm()) {
+          <button
+            matSuffix
+            mat-icon-button
+            type="button"
+            aria-label="Limpiar búsqueda"
+            (click)="clearSearch()">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+
+      <button
+        mat-stroked-button
+        type="button"
+        class="refresh-btn"
+        [disabled]="isLoading()"
+        (click)="loadOpenTickets()">
+        <mat-icon>refresh</mat-icon>
+        <span>Actualizar</span>
+      </button>
+    </div>
+
+    <!-- Estado de carga -->
+    @if (isLoading()) {
+      <div class="state-box" aria-live="polite">
+        <mat-spinner diameter="42"></mat-spinner>
+        <p>Consultando tickets abiertos...</p>
+      </div>
+    } @else {
+      <div class="table-container">
+        <table mat-table [dataSource]="dataSource" matSort class="tickets-table">
+
+          <!-- Columna: ID -->
+          <ng-container matColumnDef="id">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
+            <td mat-cell *matCellDef="let ticket" class="cell-id">#{{ ticket.id }}</td>
+          </ng-container>
+
+          <!-- Columna: Fecha (created_at) -->
+          <ng-container matColumnDef="created_at">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha</th>
+            <td mat-cell *matCellDef="let ticket" class="cell-date">
+              @if (isValidDate(ticket.created_at)) {
+                {{ ticket.created_at | date: 'dd/MM/yyyy HH:mm' }}
+              } @else {
+                {{ ticket.created_at || '—' }}
+              }
+            </td>
+          </ng-container>
+
+          <!-- Columna: Nombre (user_name) -->
+          <ng-container matColumnDef="user_name">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre</th>
+            <td mat-cell *matCellDef="let ticket" class="cell-user">
+              {{ ticket.user_name }}
+            </td>
+          </ng-container>
+
+          <!-- Columna: Descripción -->
+          <ng-container matColumnDef="description">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Descripción</th>
+            <td mat-cell *matCellDef="let ticket" class="cell-description">
+              <span [matTooltip]="ticket.description">{{ ticket.description }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Columna: Prioridad -->
+          <ng-container matColumnDef="priority">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Prioridad</th>
+            <td mat-cell *matCellDef="let ticket">
+              <mat-chip-set aria-label="Prioridad del ticket">
+                <mat-chip class="status-chip" [class]="getBadgeClass(ticket.priority)">
+                  {{ ticket.priority }}
+                </mat-chip>
+              </mat-chip-set>
+            </td>
+          </ng-container>
+
+          <!-- Columna: Status -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+            <td mat-cell *matCellDef="let ticket">
+              <mat-chip-set aria-label="Estado del ticket">
+                <mat-chip class="status-chip" [class]="getBadgeClass(ticket.status)">
+                  {{ ticket.status }}
+                </mat-chip>
+              </mat-chip-set>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns" class="ticket-row"></tr>
+
+          <!-- Fila sin resultados -->
+          <tr class="mat-row" *matNoDataRow>
+            <td class="empty-cell" [attr.colspan]="displayedColumns.length">
+              <div class="empty-state">
+                <mat-icon>inbox</mat-icon>
+                @if (searchTerm()) {
+                  <p>No se encontraron tickets que coincidan con "{{ searchTerm() }}".</p>
+                } @else {
+                  <p>No hay tickets abiertos registrados actualmente.</p>
+                }
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <mat-paginator
+        [pageSizeOptions]="[5, 10, 25]"
+        [pageSize]="10"
+        showFirstLastButtons
+        aria-label="Seleccionar página de tickets abiertos">
+      </mat-paginator>
+    }
+  </mat-card>
+</section>
+

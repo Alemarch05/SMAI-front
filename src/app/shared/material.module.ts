@@ -20,8 +20,10 @@ import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatSortModule } from '@angular/material/sort';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 
 const MATERIAL_MODULES = [
+  MatMenuModule,
   MatButtonModule,
   MatCardModule,
   MatInputModule,

@@ -1,0 +1,243 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.support-panel {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.panel-card {
+  padding: 28px 32px;
+  border-radius: 20px !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 10px 30px rgba(18, 11, 52, 0.08) !important;
+}
+
+.panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eef2f6;
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #4d57c8 0%, #371777 100%);
+    color: #ffffff;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  &__subtitle {
+    margin: 4px 0 0;
+    font-size: 0.88rem;
+    color: #64748b;
+  }
+
+  &__stats {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+}
+
+.stat-pill {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background-color: #f1f5f9;
+  color: #334155;
+
+  &__value {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+
+  &__label {
+    font-size: 0.78rem;
+    font-weight: 500;
+  }
+
+  &--amber {
+    background-color: #fff7ed;
+    color: #9a3412;
+  }
+
+  &--red {
+    background-color: #fef2f2;
+    color: #991b1b;
+  }
+}
+
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.search-field {
+  flex: 1;
+  min-width: 260px;
+}
+
+.refresh-btn {
+  height: 48px;
+  border-radius: 12px !important;
+  border-color: #cbd5e1 !important;
+  color: #371777 !important;
+  font-weight: 600;
+}
+
+.state-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 16px;
+  color: #64748b;
+}
+
+.table-container {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.tickets-table {
+  width: 100%;
+
+  th.mat-mdc-header-cell {
+    background-color: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  td.mat-mdc-cell {
+    color: #1e293b;
+    font-size: 0.9rem;
+    padding-block: 12px;
+  }
+}
+
+.ticket-row:hover {
+  background-color: #f8faff;
+}
+
+.cell-id {
+  font-weight: 700;
+  color: #4d57c8 !important;
+  white-space: nowrap;
+}
+
+.cell-date {
+  white-space: nowrap;
+  color: #64748b !important;
+}
+
+.cell-user {
+  font-weight: 600;
+}
+
+.cell-description span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 360px;
+}
+
+// Chips dinámicos por estado y prioridad
+:host ::ng-deep {
+  .status-chip.mdc-evolution-chip {
+    height: 28px;
+    border-radius: 999px;
+
+    .mdc-evolution-chip__text-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+  }
+
+  .chip--green.mdc-evolution-chip {
+    background-color: #dcfce7 !important;
+    --mdc-chip-label-text-color: #166534;
+    border: 1px solid #86efac;
+  }
+
+  .chip--amber.mdc-evolution-chip {
+    background-color: #ffedd5 !important;
+    --mdc-chip-label-text-color: #9a3412;
+    border: 1px solid #fdba74;
+  }
+
+  .chip--red.mdc-evolution-chip {
+    background-color: #fee2e2 !important;
+    --mdc-chip-label-text-color: #991b1b;
+    border: 1px solid #fca5a5;
+  }
+
+  .chip--neutral.mdc-evolution-chip {
+    background-color: #e0e7ff !important;
+    --mdc-chip-label-text-color: #3730a3;
+    border: 1px solid #c7d2fe;
+  }
+}
+
+.empty-cell {
+  text-align: center;
+  padding: 40px 16px !important;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+
+  mat-icon {
+    font-size: 36px;
+    width: 36px;
+    height: 36px;
+    color: #94a3b8;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .panel-card {
+    padding: 20px 16px;
+  }
+}
+

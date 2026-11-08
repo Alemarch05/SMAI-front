@@ -1,0 +1,207 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.support-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 32px 16px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #4d57c8 0%, #371777 100%);
+}
+
+:host-context(.content-padding) .support-page {
+  margin: -24px;
+  min-height: calc(100vh - 64px);
+}
+
+.support-card {
+  width: 100%;
+  max-width: 580px;
+  padding: 40px 44px;
+  border-radius: 24px !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 20px 50px rgba(18, 11, 52, 0.28) !important;
+  box-sizing: border-box;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eef2f6;
+  }
+
+  &__icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(77, 87, 200, 0.12);
+    color: #4b4db8;
+  }
+
+  &__titles {
+    flex: 1;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  &__subtitle {
+    margin: 4px 0 0;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: #64748b;
+  }
+}
+
+.diagnostic-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background-color: #f0f4ff;
+  border: 1px solid #dbe4ff;
+  color: #3b44a8;
+  font-size: 0.85rem;
+  font-weight: 500;
+
+  &__icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #4d57c8;
+  }
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px 0;
+  color: #64748b;
+
+  p {
+    margin: 0;
+    font-size: 0.92rem;
+  }
+}
+
+.support-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 16px;
+  }
+}
+
+.clean-field {
+  width: 100%;
+  --mdc-filled-text-field-container-color: transparent;
+  --mat-form-field-filled-container-color: transparent;
+  --mat-form-field-focus-state-layer-opacity: 0;
+  --mat-form-field-hover-state-layer-opacity: 0;
+  --mdc-filled-text-field-container-shape: 0px;
+  --mdc-filled-text-field-active-indicator-color: #dce3ec;
+  --mdc-filled-text-field-hover-active-indicator-color: #94a3b8;
+  --mdc-filled-text-field-focus-active-indicator-color: #4d57c8;
+  --mdc-filled-text-field-label-text-color: #64748b;
+  --mdc-filled-text-field-focus-label-text-color: #4d57c8;
+  --mdc-filled-text-field-input-text-color: #1e293b;
+  --mat-select-enabled-trigger-text-color: #1e293b;
+  --mat-select-focused-arrow-color: #4d57c8;
+
+  &--textarea textarea {
+    resize: vertical;
+    min-height: 88px;
+    line-height: 1.5;
+  }
+}
+
+:host ::ng-deep {
+  .clean-field {
+    .mdc-text-field--filled {
+      background-color: transparent !important;
+      padding-inline: 2px;
+    }
+
+    .mat-mdc-form-field-focus-overlay {
+      opacity: 0 !important;
+    }
+
+    .mdc-line-ripple::before {
+      border-bottom-color: #dce3ec;
+    }
+
+    .mdc-line-ripple::after {
+      border-bottom-color: #4d57c8;
+    }
+  }
+
+  .submit-btn__spinner circle {
+    stroke: #ffffff !important;
+  }
+}
+
+.submit-btn {
+  width: 100%;
+  max-width: 280px;
+  height: 48px;
+  border-radius: 24px !important;
+  font-size: 1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #4d57c8 0%, #371777 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(55, 23, 119, 0.28) !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(55, 23, 119, 0.36) !important;
+  }
+
+  &:disabled {
+    background: #e2e8f0 !important;
+    color: #94a3b8 !important;
+    box-shadow: none !important;
+  }
+
+  &__loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .support-card {
+    padding: 28px 20px;
+
+    &__title {
+      font-size: 1.25rem;
+    }
+  }
+
+  .submit-btn {
+    max-width: 100%;
+  }
+}

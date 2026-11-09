@@ -1,0 +1,63 @@
+<div class="form-container">
+  <mat-card class="ticket-card">
+    
+    <mat-card-header class="header">
+      <div mat-card-avatar class="avatar-bg">
+        <mat-icon color="primary" class="avatar-icon">support_agent</mat-icon>
+      </div>
+      <mat-card-title class="title">Soporte Técnico al Cliente</mat-card-title>
+      <mat-card-subtitle>Complete la información de su requerimiento para generar un ticket de atención</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content class="content">
+      <form [formGroup]="ticketForm" (ngSubmit)="onSubmit()" class="form-layout">
+        
+        <!-- Select Ubicación -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Ubicación*</mat-label>
+          <mat-select formControlName="ubicacionSelect">
+            <mat-option *ngFor="let ubi of ubicacionesPredefinidas" [value]="ubi">
+              {{ ubi }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Input dinámico Ubicación (Otros) -->
+        <mat-form-field appearance="outline" class="full-width" *ngIf="ticketForm.get('ubicacionSelect')?.value === 'Otros'">
+          <mat-label>Especifique su ubicación*</mat-label>
+          <input matInput formControlName="ubicacionOtra" placeholder="Ej: Laboratorio 3">
+        </mat-form-field>
+
+        <!-- Select Incidencia -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Incidencia presentada*</mat-label>
+          <mat-select formControlName="incidenciaSelect">
+            <mat-option *ngFor="let inc of incidenciasPredefinidas" [value]="inc.id">
+              {{ inc.nombre }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Input dinámico Incidencia (Otros) -->
+        <mat-form-field appearance="outline" class="full-width" *ngIf="ticketForm.get('incidenciaSelect')?.value === 99">
+          <mat-label>Especifique la incidencia*</mat-label>
+          <input matInput formControlName="incidenciaOtra" placeholder="Ej: Ruido extraño en el ventilador">
+        </mat-form-field>
+
+        <!-- Textarea Descripción -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Describa la problemática solicitada</mat-label>
+          <textarea matInput formControlName="descripcion" rows="4" maxlength="1000"></textarea>
+          <mat-hint align="end">{{ ticketForm.get('descripcion')?.value?.length || 0 }} / 1000</mat-hint>
+        </mat-form-field>
+
+        <mat-card-actions class="actions-container">
+          <button mat-flat-button color="primary" type="submit" [disabled]="ticketForm.invalid" class="submit-btn">
+            Generar Ticket
+          </button>
+        </mat-card-actions>
+
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

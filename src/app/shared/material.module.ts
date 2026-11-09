@@ -14,6 +14,7 @@ import { MatStepperModule } from '@angular/material/stepper';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
+import { MatSelectModule } from '@angular/material/select';
 
 const MATERIAL_MODULES = [
   MatButtonModule,
@@ -27,8 +28,9 @@ const MATERIAL_MODULES = [
   MatProgressSpinnerModule,
   MatStepperModule,
   MatDialogModule,
-    MatSidenavModule,
-    MatListModule
+  MatSidenavModule,
+  MatListModule,
+  MatSelectModule
 ];
 
 @NgModule({

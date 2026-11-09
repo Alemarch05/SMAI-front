@@ -3,6 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../../shared/material.module';
 import { DiagnosticService } from '../../services/diagnostic.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-interactive-diagnostic',
@@ -15,6 +16,7 @@ export class InteractiveDiagnosticComponent implements OnInit {
   private diagnosticService = inject(DiagnosticService);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
+  private router = inject(Router);
 
   diagnosticTree: any = null;
   currentNodeId: string = 'node_1';
@@ -82,6 +84,6 @@ export class InteractiveDiagnosticComponent implements OnInit {
   }
 
   goToCreateTicket(): void {
-    alert('Proximamente: Aqui se abrira el formulario para crear el ticket.');
+    this.router.navigate(['/create-ticket']);
   }
 }

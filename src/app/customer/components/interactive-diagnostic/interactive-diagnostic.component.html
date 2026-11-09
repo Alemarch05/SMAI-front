@@ -1,0 +1,40 @@
+<div class="diagnostic-container">
+  
+  <mat-spinner *ngIf="isLoading"></mat-spinner>
+
+  <mat-card class="diagnostic-card" *ngIf="!isLoading && currentNode">
+    
+    <mat-card-header class="header">
+      <mat-icon matCardAvatar color="primary" class="avatar-icon">support_agent</mat-icon>
+      <mat-card-title>Asistente de Diagnostico Inteligente</mat-card-title>
+      <mat-card-subtitle>Paso a paso</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content class="content">
+      <h3 class="question-text">{{ currentNode.text }}</h3>
+    </mat-card-content>
+
+    <mat-card-actions class="actions" *ngIf="currentNode.type === 'question'">
+      <button mat-raised-button color="primary" class="action-btn" (click)="handleAnswer('yes')">SI</button>
+      <button mat-raised-button color="warn" class="action-btn" (click)="handleAnswer('no')">NO</button>
+    </mat-card-actions>
+
+    <mat-card-actions class="actions" *ngIf="currentNode.type === 'solution'">
+      <button mat-raised-button color="accent" routerLink="/">Finalizar y Volver</button>
+    </mat-card-actions>
+
+    <mat-card-actions class="actions" *ngIf="currentNode.type === 'ticket'" style="flex-direction: column; gap: 12px; width: 100%; padding: 0 16px;">
+      <button mat-raised-button color="primary" class="full-width" (click)="goToCreateTicket()">
+        Proceder a Crear Ticket
+      </button>
+      
+      <button mat-stroked-button color="accent" class="full-width" (click)="restartDiagnostic()">
+        Volver a intentar (Empezar de nuevo)
+      </button>
+    </mat-card-actions>
+
+  </mat-card>
+
+  <h2 *ngIf="!isLoading && !currentNode">Error al cargar el diagnostico.</h2>
+
+</div>

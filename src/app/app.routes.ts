@@ -4,6 +4,7 @@ import { authGuard } from './core/guards/auth-guard';
 import { MainLayoutComponent } from './shared/components/main-layout/main-layout.component';
 import { Enlace1Component } from './components/tests/enlace1.component/enlace1.component';
 import { Enlace2Component } from './components/tests/enlace2.component/enlace2.component';
+import { InteractiveDiagnosticComponent } from './customer/components/interactive-diagnostic/interactive-diagnostic.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -20,7 +21,7 @@ export const routes: Routes = [
       // Aquí declaras la ruta para Enlace1Component
       { path: 'enlace1', component: Enlace1Component },
       { path: 'enlace2', component: Enlace2Component },
-
+      { path: 'diagnostic/:categoryId', component: InteractiveDiagnosticComponent }
     ]
   },
 

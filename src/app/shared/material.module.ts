@@ -15,8 +15,15 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatPaginatorModule } from '@angular/material/paginator';
+import { MatSortModule } from '@angular/material/sort';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 
 const MATERIAL_MODULES = [
+  MatMenuModule,
   MatButtonModule,
   MatCardModule,
   MatInputModule,
@@ -30,7 +37,12 @@ const MATERIAL_MODULES = [
   MatDialogModule,
   MatSidenavModule,
   MatListModule,
-  MatSelectModule
+  MatSelectModule,
+  MatDividerModule,
+  MatPaginatorModule,
+  MatSortModule,
+  MatChipsModule,
+  MatTooltipModule
 ];
 
 @NgModule({

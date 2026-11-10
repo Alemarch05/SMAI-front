@@ -1,36 +1,99 @@
 <mat-sidenav-container class="sidenav-container">
   <!-- MENÚ LATERAL (ASIDE) -->
   <mat-sidenav mode="side" opened class="sidenav">
+    
+    <!-- Branding Header -->
     <div class="brand">
-      <h2>Nombre Proyecto</h2>
+      <h2>Sistema de Mesa de Ayuda Inteligente</h2>
     </div>
     
-    <mat-nav-list>
-      <a mat-list-item routerLink="enlace1">
-        <span matListItemTitle>Enlace 1</span>
-      </a>
-      <a mat-list-item routerLink="enlace2">
-        <span matListItemTitle>Enlace 2</span>
-      </a>
-      <a mat-list-item routerLink="diagnostic-menu">
-        <span matListItemTitle>Asistente de Diagnóstico</span>
-      </a>
+    <mat-nav-list class="menu-list">
+
+      <!-- ================= 1. SECCIÓN USUARIO ================= -->
+      <div class="menu-group">
+        <h3 class="group-title">usuario</h3>
+        
+        <!-- <a mat-list-item routerLink="diagnostic-menu" routerLinkActive="active-link"> -->
+        <a mat-list-item routerLink="/customer/support" routerLinkActive="active-link">
+          <span matListItemTitle>Solicitar ayuda</span>
+        </a>
+        <a mat-list-item routerLink="/customer/history" routerLinkActive="active-link">
+          <span matListItemTitle>Consultar historial</span>
+        </a>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <!-- ================= 2. SECCIÓN SOPORTE TI ================= -->
+      <div class="menu-group">
+        <div class="group-header">
+          <h3 class="group-title">Soporte TI</h3>
+          <mat-icon class="lock-icon">lock</mat-icon>
+        </div>
+        
+        <a mat-list-item routerLink="/support/tickets" routerLinkActive="active-link">
+          <span matListItemTitle>Tickets</span>
+        </a>
+        <a mat-list-item routerLink="/support/history" routerLinkActive="active-link">
+          <span matListItemTitle>Consultar historial</span>
+        </a>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <!-- ================= 3. SECCIÓN ADMINISTRADOR ================= -->
+      <div class="menu-group">
+        <div class="group-header">
+          <h3 class="group-title">Administrador</h3>
+          <mat-icon class="lock-icon">lock</mat-icon>
+        </div>
+        
+        <a mat-list-item routerLink="/admin/users" routerLinkActive="active-link">
+          <span matListItemTitle>Administrar usuarios</span>
+        </a>
+        <a mat-list-item routerLink="/admin/tickets" routerLinkActive="active-link">
+          <span matListItemTitle>Administrar tickets</span>
+        </a>
+        <a mat-list-item routerLink="/admin/train-model" routerLinkActive="active-link">
+          <span matListItemTitle>Entrenar modelo</span>
+        </a>
+      </div>
+
+      <mat-divider></mat-divider>
     </mat-nav-list>
+
+    <!-- Ilustración/Branding inferior -->
+    <div class="aside-footer-logo">
+      <mat-icon class="support-illustration-icon">support_agent</mat-icon>
+    </div>
+
   </mat-sidenav>
 
   <!-- CONTENIDO PRINCIPAL -->
-  <mat-sidenav-content>
-    <mat-toolbar color="primary" class="toolbar">
-      <span>Sistema</span>
+  <mat-sidenav-content class="main-content">
+    
+    <!-- Header Superior Transparente / Flotante -->
+    <div class="top-header">
       <span class="spacer"></span>
-      <button mat-button (click)="logout()">
-        <mat-icon>logout</mat-icon> Salir
+      
+      <!-- Avatar de Usuario Flotante (Mockup) -->
+      <button mat-icon-button class="user-avatar-btn" [matMenuTriggerFor]="userMenu" aria-label="Perfil de usuario">
+        <mat-icon>account_circle</mat-icon>
       </button>
-    </mat-toolbar>
 
-    <!-- AQUÍ SE RENDERIZAN LAS DEMÁS VISTAS -->
+      <!-- Menú desplegable al hacer clic en el avatar -->
+      <mat-menu #userMenu="matMenu">
+        <button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Cerrar Sesión</span>
+        </button>
+      </mat-menu>
+    </div>
+
+    <!-- Vistas dinámicas -->
     <div class="content-padding">
       <router-outlet></router-outlet>
     </div>
+
   </mat-sidenav-content>
 </mat-sidenav-container>

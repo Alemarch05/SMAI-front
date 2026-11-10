@@ -2,11 +2,10 @@ import { Routes } from '@angular/router';
 import { LoginComponent } from './components/auth/login.component/login.component';
 import { authGuard } from './core/guards/auth-guard';
 import { MainLayoutComponent } from './shared/components/main-layout/main-layout.component';
-import { Enlace1Component } from './components/tests/enlace1.component/enlace1.component';
-import { Enlace2Component } from './components/tests/enlace2.component/enlace2.component';
 import { InteractiveDiagnosticComponent } from './customer/components/interactive-diagnostic/interactive-diagnostic.component';
 import { CreateTicketComponent } from './customer/components/create-ticket/create-ticket.component';
 import { DiagnosticMenuComponent } from './customer/components/diagnostic-menu/diagnostic-menu.component';
+import { Dashboard } from './components/dashboard/dashboard.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -17,15 +16,38 @@ export const routes: Routes = [
     component: MainLayoutComponent,
     canActivate: [authGuard],
     children: [
-      // Redirección por defecto si entran a la raíz '/' hacia '/enlace1'
-      { path: '', redirectTo: 'enlace1', pathMatch: 'full' },
+      // Redirección por defecto
+      { path: '', component: Dashboard, pathMatch: 'full' },
       
-      // Aquí declaras la ruta para Enlace1Component
-      { path: 'enlace1', component: Enlace1Component },
-      { path: 'enlace2', component: Enlace2Component },
-      { path: 'diagnostic-menu', component: DiagnosticMenuComponent },
+      // --- 1. SECCIÓN USUARIO ---
+      { path: 'customer/support', component: DiagnosticMenuComponent },
+
+      
+      // --- FLUJO INTERNO DE TICKETS ---
       { path: 'diagnostic/:categoryId', component: InteractiveDiagnosticComponent },
-      { path: 'create-ticket', component: CreateTicketComponent }
+      { path: 'create-ticket', component: CreateTicketComponent },
+
+      // --- 2. SECCIÓN SOPORTE TI ---
+      {
+        path: 'support/tickets',
+        loadComponent: () =>
+          import('./support/components/ticket-list/ticket-list.component').then(
+            (m) => m.TicketListComponent
+          )
+      },
+      {
+        path: 'support/history',
+        loadComponent: () =>
+          import('./support/components/ticket-history/ticket-history.component').then(
+            (m) => m.TicketHistoryComponent
+          )
+      },
+
+      // --- 3. SECCIÓN ADMINISTRADOR (Comodines temporales) ---
+      { path: 'customer/history', redirectTo: 'customer/support', pathMatch: 'full' },
+      { path: 'admin/users', redirectTo: 'customer/support', pathMatch: 'full' },
+      { path: 'admin/tickets', redirectTo: 'customer/support', pathMatch: 'full' },
+      { path: 'admin/train-model', redirectTo: 'customer/support', pathMatch: 'full' }
     ]
   },
 

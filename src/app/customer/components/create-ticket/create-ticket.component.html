@@ -28,18 +28,18 @@
           <input matInput formControlName="ubicacionOtra" placeholder="Ej: Laboratorio 3">
         </mat-form-field>
 
-        <!-- Select Incidencia -->
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Incidencia presentada*</mat-label>
           <mat-select formControlName="incidenciaSelect">
-            <mat-option *ngFor="let inc of incidenciasPredefinidas" [value]="inc.id">
-              {{ inc.nombre }}
+            <mat-option *ngFor="let inc of opcionesActuales" [value]="inc">
+              {{ inc }}
             </mat-option>
+            <mat-option value="Otro">Otro (Especificar)</mat-option>
           </mat-select>
         </mat-form-field>
 
         <!-- Input dinámico Incidencia (Otros) -->
-        <mat-form-field appearance="outline" class="full-width" *ngIf="ticketForm.get('incidenciaSelect')?.value === 99">
+        <mat-form-field appearance="outline" class="full-width" *ngIf="ticketForm.get('incidenciaSelect')?.value === 'Otro'">
           <mat-label>Especifique la incidencia*</mat-label>
           <input matInput formControlName="incidenciaOtra" placeholder="Ej: Ruido extraño en el ventilador">
         </mat-form-field>

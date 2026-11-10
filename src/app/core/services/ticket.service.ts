@@ -7,7 +7,6 @@ import { Observable } from 'rxjs';
 })
 export class TicketService {
   private http = inject(HttpClient);
-  // Asegúrate de que esta URL coincide con el puerto de tu backend Laravel
   private apiUrl = 'http://localhost:8001/api/tickets';
 
   createTicket(payload: any): Observable<any> {

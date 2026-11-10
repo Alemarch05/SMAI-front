@@ -2,7 +2,7 @@ import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../../shared/material.module';
-import { DiagnosticService } from '../../services/diagnostic.service';
+import { DiagnosticService } from '../../../core/services/diagnostic.service';
 import { Router } from '@angular/router';
 
 @Component({
@@ -84,6 +84,8 @@ export class InteractiveDiagnosticComponent implements OnInit {
   }
 
   goToCreateTicket(): void {
-    this.router.navigate(['/create-ticket']);
+    this.router.navigate(['/create-ticket'], { 
+      queryParams: { family: this.categoryId } 
+    });
   }
 }

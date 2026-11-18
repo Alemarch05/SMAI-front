@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
+import { DiagnosticService } from '../../../core/services/diagnostic.service';
 
 import { MaterialModule } from '../../../shared/material.module';
 import { TicketService } from '../../../core/services/ticket.service';
@@ -14,6 +15,7 @@ import { TicketService } from '../../../core/services/ticket.service';
   styleUrl: './create-ticket.component.scss'
 })
 export class CreateTicketComponent implements OnInit {
+  private diagnosticService = inject(DiagnosticService);
   private fb = inject(FormBuilder);
   private ticketService = inject(TicketService);
   private router = inject(Router);
@@ -104,11 +106,9 @@ export class CreateTicketComponent implements OnInit {
         ? formValues.ubicacionOtra 
         : formValues.ubicacionSelect;
 
-      
       let finalCategoryId = this.familiaActual;     
       let finalTitle = formValues.incidenciaSelect; 
 
-      
       if (formValues.incidenciaSelect === 'Otro') {
         finalCategoryId = this.customIdActual;      
         finalTitle = formValues.incidenciaOtra;     
@@ -118,12 +118,15 @@ export class CreateTicketComponent implements OnInit {
         location: finalLocation,
         category_id: finalCategoryId,
         title: finalTitle,
-        description: formValues.descripcion
+        description: formValues.descripcion,
+        diagnostic_category_id: this.familiaActual,
+        decisions: this.diagnosticService.getDecisions()
       };
 
       this.ticketService.createTicket(payload).subscribe({
         next: (response) => {
-          console.log('Ticket generado con éxito:', response);
+          console.log('Ticket y diagnóstico guardados:', response);
+          this.diagnosticService.clearDecisions(); // Limpia la memoria tras guardar
           alert('Ticket generado con éxito');
           this.router.navigate(['/']); 
         },

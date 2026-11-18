@@ -13,9 +13,23 @@ export interface DiagnosticResponse {
 })
 export class DiagnosticService {
   private http = inject(HttpClient);
-  private apiUrl = environment.ticketApiUrl; 
+  private apiUrl = environment.ticketApiUrl;
+
+  private tempDecisions: Record<string, number> = {};
 
   getDiagnosticTree(categoryId: string): Observable<DiagnosticResponse> {
     return this.http.get<DiagnosticResponse>(`${this.apiUrl}/categories/${categoryId}/diagnostic-tree`);
+  }
+
+  recordDecision(nodeId: string, answer: 'yes' | 'no'): void {
+    this.tempDecisions[nodeId] = answer === 'yes' ? 1 : 0;
+  }
+
+  getDecisions(): Record<string, number> {
+    return { ...this.tempDecisions };
+  }
+
+  clearDecisions(): void {
+    this.tempDecisions = {};
   }
 }

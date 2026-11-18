@@ -30,6 +30,7 @@ export class InteractiveDiagnosticComponent implements OnInit {
   }
 
   loadDiagnosticTree(): void {
+    this.diagnosticService.clearDecisions();
     console.log('Iniciando carga del diagnostico...');
     this.isLoading = true;
     this.currentNodeId = 'node_1';
@@ -65,6 +66,7 @@ export class InteractiveDiagnosticComponent implements OnInit {
 
   handleAnswer(answer: 'yes' | 'no'): void {
     if (!this.currentNode) return;
+    this.diagnosticService.recordDecision(this.currentNodeId, answer);
     const nextNodeId = answer === 'yes' ? this.currentNode.yes_next : this.currentNode.no_next;
     
     if (this.diagnosticTree[nextNodeId]) {
@@ -77,7 +79,7 @@ export class InteractiveDiagnosticComponent implements OnInit {
   }
 
   restartDiagnostic(): void {
-    console.log('Reiniciando el arbol sin recargar la pagina...');
+    this.diagnosticService.clearDecisions();
     this.currentNodeId = 'node_1';
     this.currentNode = this.diagnosticTree[this.currentNodeId];
     this.cdr.detectChanges();

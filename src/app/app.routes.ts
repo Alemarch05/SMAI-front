@@ -43,10 +43,28 @@ export const routes: Routes = [
           )
       },
 
-      // --- 3. SECCIÓN ADMINISTRADOR (Comodines temporales) ---
-      { path: 'customer/history', redirectTo: 'customer/support', pathMatch: 'full' },
-      { path: 'admin/users', redirectTo: 'customer/support', pathMatch: 'full' },
-      { path: 'admin/tickets', redirectTo: 'customer/support', pathMatch: 'full' },
+      // --- 3. SECCIÓN ADMINISTRADOR E HISTORIAL CLIENTE ---
+      {
+        path: 'customer/history',
+        loadComponent: () =>
+          import('./support/components/ticket-history/ticket-history.component').then(
+            (m) => m.TicketHistoryComponent
+          )
+      },
+      {
+        path: 'admin/users',
+        loadComponent: () =>
+          import('./admin/components/user-management/user-management.component').then(
+            (m) => m.UserManagementComponent
+          )
+      },
+      {
+        path: 'admin/tickets',
+        loadComponent: () =>
+          import('./support/components/ticket-list/ticket-list.component').then(
+            (m) => m.TicketListComponent
+          )
+      },
       { path: 'admin/train-model', redirectTo: 'customer/support', pathMatch: 'full' }
     ]
   },

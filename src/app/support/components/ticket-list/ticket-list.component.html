@@ -9,7 +9,7 @@
         <div>
           <h1 class="panel-header__title">Tickets Abiertos</h1>
           <p class="panel-header__subtitle">
-            Gestión y monitoreo en tiempo real de solicitudes activas en Soporte TI
+            Gestión, edición de prioridad/estado y control de solicitudes en Soporte TI (Puerto 8001)
           </p>
         </div>
       </div>
@@ -132,6 +132,31 @@
             </td>
           </ng-container>
 
+          <!-- Columna: Acciones (Editar / Eliminar) -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef class="header-actions">Acciones</th>
+            <td mat-cell *matCellDef="let ticket" class="cell-actions">
+              <button
+                mat-icon-button
+                type="button"
+                class="action-btn action-btn--edit"
+                matTooltip="Editar estado o prioridad"
+                aria-label="Editar estado o prioridad"
+                (click)="openEditDialog(ticket)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                class="action-btn action-btn--delete"
+                matTooltip="Eliminar ticket"
+                aria-label="Eliminar ticket"
+                (click)="openDeleteConfirm(ticket)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns" class="ticket-row"></tr>
 
@@ -161,3 +186,93 @@
   </mat-card>
 </section>
 
+<!-- Modal: Editar Prioridad y Estado del Ticket -->
+<ng-template #editTicketTemplate>
+  <h2 mat-dialog-title class="dialog-title">
+    <mat-icon>edit_note</mat-icon>
+    <span>Editar Ticket #{{ selectedTicket()?.id }}</span>
+  </h2>
+
+  <mat-dialog-content class="dialog-body">
+    <div class="ticket-summary">
+      <p><strong>Solicitante:</strong> {{ selectedTicket()?.user_name }}</p>
+      <p><strong>Descripción:</strong> {{ selectedTicket()?.description }}</p>
+    </div>
+
+    <form [formGroup]="editTicketForm" class="dialog-form" novalidate>
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Prioridad</mat-label>
+        <mat-icon matPrefix>flag</mat-icon>
+        <mat-select formControlName="priority">
+          @for (priorityOpt of priorityOptions; track priorityOpt) {
+            <mat-option [value]="priorityOpt">{{ priorityOpt }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Estado (Status)</mat-label>
+        <mat-icon matPrefix>sync_alt</mat-icon>
+        <mat-select formControlName="status">
+          @for (statusOpt of statusOptions; track statusOpt) {
+            <mat-option [value]="statusOpt">{{ statusOpt }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="dialog-actions">
+    <button mat-button type="button" [disabled]="isUpdating()" (click)="closeDialog()">
+      Cancelar
+    </button>
+    <button
+      mat-raised-button
+      color="primary"
+      type="button"
+      class="save-btn"
+      [disabled]="editTicketForm.invalid || isUpdating()"
+      (click)="saveTicketChanges()">
+      @if (isUpdating()) {
+        <span>Guardando...</span>
+      } @else {
+        <span>Guardar Cambios</span>
+      }
+    </button>
+  </mat-dialog-actions>
+</ng-template>
+
+<!-- Modal: Confirmación de Eliminación de Ticket -->
+<ng-template #deleteTicketTemplate>
+  <h2 mat-dialog-title class="dialog-title dialog-title--danger">
+    <mat-icon>warning_amber</mat-icon>
+    <span>Eliminar Ticket #{{ ticketToDelete()?.id }}</span>
+  </h2>
+
+  <mat-dialog-content class="dialog-body">
+    <p>
+      ¿Está seguro de que desea eliminar el ticket de
+      <strong>{{ ticketToDelete()?.user_name }}</strong>?
+    </p>
+    <p class="confirm-subtext">{{ ticketToDelete()?.description }}</p>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="dialog-actions">
+    <button mat-button type="button" [disabled]="isDeleting()" (click)="closeDialog()">
+      Cancelar
+    </button>
+    <button
+      mat-raised-button
+      color="warn"
+      type="button"
+      class="delete-confirm-btn"
+      [disabled]="isDeleting()"
+      (click)="confirmDeleteTicket()">
+      @if (isDeleting()) {
+        <span>Eliminando...</span>
+      } @else {
+        <span>Eliminar Ticket</span>
+      }
+    </button>
+  </mat-dialog-actions>
+</ng-template>

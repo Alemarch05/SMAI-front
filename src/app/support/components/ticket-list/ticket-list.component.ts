@@ -2,6 +2,7 @@ import {
   Component,
   DestroyRef,
   OnInit,
+  TemplateRef,
   computed,
   effect,
   inject,
@@ -10,6 +11,7 @@ import {
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 
@@ -17,13 +19,15 @@ import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { MaterialModule } from '@shared/material.module';
 import {
   ApiCollectionResponse,
   SupportTicket,
-  TicketService
+  TicketService,
+  UpdateTicketPayload
 } from '../../services/ticket.service';
 
 export type BadgeVariant = 'chip--green' | 'chip--amber' | 'chip--red' | 'chip--neutral';
@@ -33,42 +37,68 @@ export type BadgeVariant = 'chip--green' | 'chip--amber' | 'chip--red' | 'chip--
   standalone: true,
   imports: [
     DatePipe,
+    ReactiveFormsModule,
     MaterialModule,
     MatTableModule,
     MatPaginatorModule,
     MatSortModule,
-    MatChipsModule
+    MatChipsModule,
+    MatDialogModule
   ],
   templateUrl: './ticket-list.component.html',
   styleUrl: './ticket-list.component.scss'
 })
 export class TicketListComponent implements OnInit {
   private readonly ticketService = inject(TicketService);
+  private readonly fb = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly paginator = viewChild(MatPaginator);
   private readonly sort = viewChild(MatSort);
+  private readonly editDialogTemplate = viewChild<TemplateRef<unknown>>('editTicketTemplate');
+  private readonly deleteDialogTemplate = viewChild<TemplateRef<unknown>>('deleteTicketTemplate');
 
-  // Columnas requeridas en Fase 2
+  private activeDialogRef: MatDialogRef<unknown> | null = null;
+
+  // Columnas incluyendo 'actions' para Editar y Eliminar por fila
   readonly displayedColumns: readonly string[] = [
     'id',
     'created_at',
     'user_name',
     'description',
     'priority',
-    'status'
+    'status',
+    'actions'
   ];
 
-  // Fuente de datos de Angular Material
+  // Opciones para los selectores de Edición de Ticket
+  readonly priorityOptions: readonly string[] = [
+    'Baja',
+    'Media',
+    'Alta Prioridad',
+    'Crítica'
+  ];
+
+  readonly statusOptions: readonly string[] = [
+    'Pendiente',
+    'En Proceso',
+    'Resuelto',
+    'Completado'
+  ];
+
   readonly dataSource = new MatTableDataSource<SupportTicket>([]);
 
-  // Estado reactivo mediante Signals
   readonly tickets = signal<SupportTicket[]>([]);
   readonly isLoading = signal<boolean>(true);
+  readonly isUpdating = signal<boolean>(false);
+  readonly isDeleting = signal<boolean>(false);
   readonly searchTerm = signal<string>('');
 
-  // Indicadores rápidos derivados con computed()
+  readonly selectedTicket = signal<SupportTicket | null>(null);
+  readonly ticketToDelete = signal<SupportTicket | null>(null);
+
   readonly totalTickets = computed(() => this.tickets().length);
   readonly highPriorityCount = computed(
     () => this.tickets().filter((t) => this.getBadgeClass(t.priority) === 'chip--red').length
@@ -77,8 +107,13 @@ export class TicketListComponent implements OnInit {
     () => this.tickets().filter((t) => this.getBadgeClass(t.status) === 'chip--amber').length
   );
 
+  // Formulario reactivo para editar estado y prioridad del ticket
+  readonly editTicketForm = this.fb.group({
+    priority: this.fb.nonNullable.control('Media', [Validators.required]),
+    status: this.fb.nonNullable.control('Pendiente', [Validators.required])
+  });
+
   constructor() {
-    // Vincula reactivamente MatPaginator y MatSort cuando la tabla se renderiza en el DOM
     effect(() => {
       const paginatorInstance = this.paginator();
       const sortInstance = this.sort();
@@ -127,9 +162,6 @@ export class TicketListComponent implements OnInit {
       });
   }
 
-  /**
-   * Filtra dinámicamente las filas del MatTableDataSource desde el buscador superior.
-   */
   applyFilter(event: Event): void {
     const value = (event.target as HTMLInputElement).value ?? '';
     this.searchTerm.set(value);
@@ -147,6 +179,133 @@ export class TicketListComponent implements OnInit {
     if (this.dataSource.paginator) {
       this.dataSource.paginator.firstPage();
     }
+  }
+
+  /**
+   * Abre el modal de edición precargando prioridad y estado del ticket seleccionado.
+   */
+  openEditDialog(ticket: SupportTicket): void {
+    this.selectedTicket.set(ticket);
+    this.editTicketForm.reset({
+      priority: ticket.priority || 'Media',
+      status: ticket.status || 'Pendiente'
+    });
+
+    const tpl = this.editDialogTemplate();
+    if (tpl) {
+      this.activeDialogRef = this.dialog.open(tpl, {
+        width: '460px',
+        maxWidth: '95vw',
+        disableClose: true
+      });
+    }
+  }
+
+  /**
+   * Envía PUT http://127.0.0.1:8001/api/tickets/:id con el nuevo estado y prioridad.
+   */
+  saveTicketChanges(): void {
+    const target = this.selectedTicket();
+    if (!target || this.editTicketForm.invalid || this.isUpdating()) {
+      this.editTicketForm.markAllAsTouched();
+      return;
+    }
+
+    const payload: UpdateTicketPayload = this.editTicketForm.getRawValue();
+    this.isUpdating.set(true);
+
+    this.ticketService
+      .updateTicket(target.id, payload)
+      .pipe(
+        finalize(() => this.isUpdating.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (res) => {
+          const updatedList = this.tickets().map((item) =>
+            item.id === target.id
+              ? { ...item, priority: payload.priority, status: payload.status }
+              : item
+          );
+          this.tickets.set(updatedList);
+          this.dataSource.data = updatedList;
+          this.closeDialog();
+          this.snackBar.open(
+            res?.message || `Ticket #${target.id} actualizado correctamente.`,
+            'Cerrar',
+            { duration: 3500 }
+          );
+        },
+        error: (err: HttpErrorResponse) => {
+          console.error('Error al actualizar ticket:', err);
+          this.snackBar.open(
+            'Error al actualizar el ticket en el microservicio (puerto 8001).',
+            'Cerrar',
+            { duration: 4000 }
+          );
+        }
+      });
+  }
+
+  /**
+   * Abre el modal de confirmación antes de eliminar un ticket.
+   */
+  openDeleteConfirm(ticket: SupportTicket): void {
+    this.ticketToDelete.set(ticket);
+    const tpl = this.deleteDialogTemplate();
+    if (tpl) {
+      this.activeDialogRef = this.dialog.open(tpl, {
+        width: '420px',
+        maxWidth: '95vw'
+      });
+    }
+  }
+
+  /**
+   * Ejecuta DELETE http://127.0.0.1:8001/api/tickets/:id tras confirmar la acción.
+   */
+  confirmDeleteTicket(): void {
+    const target = this.ticketToDelete();
+    if (!target || this.isDeleting()) {
+      return;
+    }
+
+    this.isDeleting.set(true);
+
+    this.ticketService
+      .deleteTicket(target.id)
+      .pipe(
+        finalize(() => this.isDeleting.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (res) => {
+          const remaining = this.tickets().filter((t) => t.id !== target.id);
+          this.tickets.set(remaining);
+          this.dataSource.data = remaining;
+          this.closeDialog();
+          this.snackBar.open(
+            res?.message || `Ticket #${target.id} eliminado correctamente.`,
+            'Cerrar',
+            { duration: 3500 }
+          );
+        },
+        error: (err: HttpErrorResponse) => {
+          console.error('Error al eliminar ticket:', err);
+          this.snackBar.open(
+            'No fue posible eliminar el ticket seleccionado.',
+            'Cerrar',
+            { duration: 4000 }
+          );
+        }
+      });
+  }
+
+  closeDialog(): void {
+    this.activeDialogRef?.close();
+    this.activeDialogRef = null;
+    this.selectedTicket.set(null);
+    this.ticketToDelete.set(null);
   }
 
   /**
@@ -194,9 +353,6 @@ export class TicketListComponent implements OnInit {
     return 'chip--neutral';
   }
 
-  /**
-   * Verifica si una fecha es válida para formatearla con DatePipe o mostrar el texto original.
-   */
   isValidDate(dateValue: string | null | undefined): boolean {
     if (!dateValue) {
       return false;
@@ -256,4 +412,3 @@ export class TicketListComponent implements OnInit {
       .trim();
   }
 }
-

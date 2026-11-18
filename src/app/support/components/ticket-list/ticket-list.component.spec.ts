@@ -1,7 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideAnimations } from '@angular/platform-browser/animations';
 import { TicketListComponent } from './ticket-list.component';
 
 describe('TicketListComponent', () => {
@@ -12,7 +11,7 @@ describe('TicketListComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [TicketListComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideAnimations()]
+      providers: [provideHttpClient(), provideHttpClientTesting()]
     }).compileComponents();
 
     httpMock = TestBed.inject(HttpTestingController);
@@ -65,5 +64,35 @@ describe('TicketListComponent', () => {
     expect(component.dataSource.filteredData.length).toBe(1);
     expect(component.dataSource.filteredData[0].user_name).toBe('Ana Gómez');
   });
-});
 
+  it('should update ticket status and priority via PUT http://127.0.0.1:8001/api/tickets/:id', () => {
+    component.selectedTicket.set(component.tickets()[0]);
+    component.editTicketForm.setValue({
+      priority: 'Crítica',
+      status: 'Resuelto'
+    });
+
+    component.saveTicketChanges();
+
+    const putReq = httpMock.expectOne('http://127.0.0.1:8001/api/tickets/1');
+    expect(putReq.request.method).toBe('PUT');
+    expect(putReq.request.body).toEqual({
+      priority: 'Crítica',
+      status: 'Resuelto'
+    });
+    putReq.flush({ success: true });
+
+    expect(component.tickets()[0].status).toBe('Resuelto');
+  });
+
+  it('should delete ticket via DELETE http://127.0.0.1:8001/api/tickets/:id', () => {
+    component.ticketToDelete.set(component.tickets()[0]);
+    component.confirmDeleteTicket();
+
+    const delReq = httpMock.expectOne('http://127.0.0.1:8001/api/tickets/1');
+    expect(delReq.request.method).toBe('DELETE');
+    delReq.flush({ success: true });
+
+    expect(component.tickets().length).toBe(1);
+  });
+});

@@ -1,0 +1,293 @@
+<section class="admin-panel">
+  <mat-card class="panel-card">
+    <!-- Encabezado y métricas -->
+    <header class="panel-header">
+      <div class="panel-header__brand">
+        <div class="panel-header__icon" aria-hidden="true">
+          <mat-icon>manage_accounts</mat-icon>
+        </div>
+        <div>
+          <h1 class="panel-header__title">Administración de Usuarios</h1>
+          <p class="panel-header__subtitle">
+            Gestión de cuentas, roles y permisos del sistema SMAI (Microservicio Puerto 8000)
+          </p>
+        </div>
+      </div>
+
+      <div class="panel-header__stats">
+        <div class="stat-pill">
+          <span class="stat-pill__value">{{ totalUsers() }}</span>
+          <span class="stat-pill__label">Usuarios</span>
+        </div>
+        <div class="stat-pill stat-pill--purple">
+          <span class="stat-pill__value">{{ adminCount() }}</span>
+          <span class="stat-pill__label">Admins</span>
+        </div>
+        <div class="stat-pill stat-pill--blue">
+          <span class="stat-pill__value">{{ supportCount() }}</span>
+          <span class="stat-pill__label">Soporte TI</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Barra de herramientas: Buscador + Nuevo Usuario + Actualizar -->
+    <div class="toolbar-row">
+      <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+        <mat-label>Buscar usuario</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input
+          matInput
+          type="text"
+          [value]="searchTerm()"
+          (input)="applyFilter($event)"
+          placeholder="Filtrar por nombre, correo, ID o rol..." />
+        @if (searchTerm()) {
+          <button
+            matSuffix
+            mat-icon-button
+            type="button"
+            aria-label="Limpiar búsqueda"
+            (click)="clearSearch()">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+
+      <div class="toolbar-actions">
+        <button
+          mat-stroked-button
+          type="button"
+          class="refresh-btn"
+          [disabled]="isLoading()"
+          (click)="loadUsers()">
+          <mat-icon>refresh</mat-icon>
+          <span>Actualizar</span>
+        </button>
+
+        <button
+          mat-raised-button
+          color="primary"
+          type="button"
+          class="create-btn"
+          (click)="openCreateDialog()">
+          <mat-icon>person_add</mat-icon>
+          <span>Nuevo Usuario</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Estado de carga -->
+    @if (isLoading()) {
+      <div class="state-box" aria-live="polite">
+        <mat-spinner diameter="42"></mat-spinner>
+        <p>Cargando usuarios del sistema...</p>
+      </div>
+    } @else {
+      <div class="table-container">
+        <table mat-table [dataSource]="dataSource" matSort class="users-table">
+
+          <!-- Columna: ID -->
+          <ng-container matColumnDef="id">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
+            <td mat-cell *matCellDef="let user" class="cell-id">#{{ user.id }}</td>
+          </ng-container>
+
+          <!-- Columna: Nombre -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre</th>
+            <td mat-cell *matCellDef="let user" class="cell-name">{{ user.name }}</td>
+          </ng-container>
+
+          <!-- Columna: Correo -->
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Correo Electrónico</th>
+            <td mat-cell *matCellDef="let user" class="cell-email">{{ user.email }}</td>
+          </ng-container>
+
+          <!-- Columna: Rol -->
+          <ng-container matColumnDef="role">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Rol</th>
+            <td mat-cell *matCellDef="let user">
+              <mat-chip-set aria-label="Rol del usuario">
+                <mat-chip class="role-chip" [class]="getRoleChipClass(user.role)">
+                  {{ getRoleLabel(user.role) }}
+                </mat-chip>
+              </mat-chip-set>
+            </td>
+          </ng-container>
+
+          <!-- Columna: Acciones -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef class="header-actions">Acciones</th>
+            <td mat-cell *matCellDef="let user" class="cell-actions">
+              <button
+                mat-icon-button
+                type="button"
+                class="action-btn action-btn--edit"
+                matTooltip="Editar usuario"
+                aria-label="Editar usuario"
+                (click)="openEditDialog(user)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                class="action-btn action-btn--delete"
+                matTooltip="Eliminar usuario"
+                aria-label="Eliminar usuario"
+                (click)="openDeleteConfirm(user)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns" class="user-row"></tr>
+
+          <tr class="mat-row" *matNoDataRow>
+            <td class="empty-cell" [attr.colspan]="displayedColumns.length">
+              <div class="empty-state">
+                <mat-icon>group_off</mat-icon>
+                @if (searchTerm()) {
+                  <p>No se encontraron usuarios que coincidan con "{{ searchTerm() }}".</p>
+                } @else {
+                  <p>No hay usuarios registrados actualmente.</p>
+                }
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <mat-paginator
+        [pageSizeOptions]="[5, 10, 25]"
+        [pageSize]="10"
+        showFirstLastButtons
+        aria-label="Paginación de usuarios">
+      </mat-paginator>
+    }
+  </mat-card>
+</section>
+
+<!-- Modal: Crear / Editar Usuario -->
+<ng-template #userDialogTemplate>
+  <h2 mat-dialog-title class="dialog-title">
+    <mat-icon>{{ isEditMode() ? 'edit' : 'person_add' }}</mat-icon>
+    <span>{{ isEditMode() ? 'Editar Usuario' : 'Registrar Nuevo Usuario' }}</span>
+  </h2>
+
+  <mat-dialog-content class="dialog-body">
+    <form [formGroup]="userForm" class="dialog-form" novalidate>
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Nombre completo</mat-label>
+        <mat-icon matPrefix>person</mat-icon>
+        <input matInput formControlName="name" placeholder="Ej. Laura Martínez" />
+        @if (userForm.controls.name.hasError('required') && userForm.controls.name.touched) {
+          <mat-error>El nombre es obligatorio</mat-error>
+        } @else if (userForm.controls.name.hasError('minlength') && userForm.controls.name.touched) {
+          <mat-error>Mínimo 3 caracteres</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Correo electrónico</mat-label>
+        <mat-icon matPrefix>mail</mat-icon>
+        <input matInput type="email" formControlName="email" placeholder="usuario@smai.com" />
+        @if (userForm.controls.email.hasError('required') && userForm.controls.email.touched) {
+          <mat-error>El correo es obligatorio</mat-error>
+        } @else if (userForm.controls.email.hasError('email') && userForm.controls.email.touched) {
+          <mat-error>Ingrese un correo electrónico válido</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Rol del usuario</mat-label>
+        <mat-icon matPrefix>badge</mat-icon>
+        <mat-select formControlName="role">
+          @for (roleOpt of roleOptions; track roleOpt.value) {
+            <mat-option [value]="roleOpt.value">{{ roleOpt.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>
+          {{ isEditMode() ? 'Nueva contraseña (opcional)' : 'Contraseña' }}
+        </mat-label>
+        <mat-icon matPrefix>lock</mat-icon>
+        <input
+          matInput
+          [type]="hidePassword() ? 'password' : 'text'"
+          formControlName="password"
+          placeholder="Mínimo 6 caracteres" />
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          (click)="hidePassword.set(!hidePassword())"
+          aria-label="Alternar visibilidad de contraseña">
+          <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+        @if (userForm.controls.password.hasError('required') && userForm.controls.password.touched) {
+          <mat-error>La contraseña es obligatoria para nuevos usuarios</mat-error>
+        } @else if (userForm.controls.password.hasError('minlength') && userForm.controls.password.touched) {
+          <mat-error>La contraseña debe tener al menos 6 caracteres</mat-error>
+        }
+      </mat-form-field>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="dialog-actions">
+    <button mat-button type="button" [disabled]="isSaving()" (click)="closeDialog()">
+      Cancelar
+    </button>
+    <button
+      mat-raised-button
+      color="primary"
+      type="button"
+      class="save-btn"
+      [disabled]="userForm.invalid || isSaving()"
+      (click)="saveUser()">
+      @if (isSaving()) {
+        <span>Guardando...</span>
+      } @else {
+        <span>{{ isEditMode() ? 'Guardar Cambios' : 'Crear Usuario' }}</span>
+      }
+    </button>
+  </mat-dialog-actions>
+</ng-template>
+
+<!-- Modal: Confirmación de Eliminación -->
+<ng-template #deleteConfirmTemplate>
+  <h2 mat-dialog-title class="dialog-title dialog-title--danger">
+    <mat-icon>warning_amber</mat-icon>
+    <span>Confirmar Eliminación</span>
+  </h2>
+
+  <mat-dialog-content class="dialog-body">
+    <p class="confirm-text">
+      ¿Está seguro de que desea eliminar al usuario
+      <strong>{{ userToDelete()?.name }}</strong> ({{ userToDelete()?.email }})?
+    </p>
+    <p class="confirm-subtext">Esta acción no se puede deshacer.</p>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="dialog-actions">
+    <button mat-button type="button" [disabled]="isDeleting()" (click)="closeDialog()">
+      Cancelar
+    </button>
+    <button
+      mat-raised-button
+      color="warn"
+      type="button"
+      class="delete-confirm-btn"
+      [disabled]="isDeleting()"
+      (click)="confirmDeleteUser()">
+      @if (isDeleting()) {
+        <span>Eliminando...</span>
+      } @else {
+        <span>Eliminar Usuario</span>
+      }
+    </button>
+  </mat-dialog-actions>
+</ng-template>

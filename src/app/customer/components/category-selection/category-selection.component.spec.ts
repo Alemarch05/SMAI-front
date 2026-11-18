@@ -1,7 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideAnimations } from '@angular/platform-browser/animations';
 import { CategorySelectionComponent } from './category-selection.component';
 import { CategoryService } from '../../services/category.service';
 
@@ -18,8 +17,7 @@ describe('CategorySelectionComponent', () => {
       imports: [CategorySelectionComponent],
       providers: [
         provideHttpClient(),
-        provideHttpClientTesting(),
-        provideAnimations()
+        provideHttpClientTesting()
       ]
     }).compileComponents();
 

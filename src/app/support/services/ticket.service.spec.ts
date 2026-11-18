@@ -1,7 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { SupportTicket, TicketHistoryItem, TicketService } from './ticket.service';
+import {
+  SupportTicket,
+  TicketHistoryItem,
+  TicketService,
+  UpdateTicketPayload
+} from './ticket.service';
 
 describe('TicketService', () => {
   let service: TicketService;
@@ -64,5 +69,30 @@ describe('TicketService', () => {
     expect(req.request.method).toBe('GET');
     req.flush(mockHistory);
   });
-});
 
+  it('should consume PUT http://127.0.0.1:8001/api/tickets/:id in updateTicket()', () => {
+    const payload: UpdateTicketPayload = {
+      priority: 'Alta Prioridad',
+      status: 'En Proceso'
+    };
+
+    service.updateTicket(101, payload).subscribe((res) => {
+      expect(res.success).toBe(true);
+    });
+
+    const req = httpMock.expectOne('http://127.0.0.1:8001/api/tickets/101');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual(payload);
+    req.flush({ success: true });
+  });
+
+  it('should consume DELETE http://127.0.0.1:8001/api/tickets/:id in deleteTicket()', () => {
+    service.deleteTicket(101).subscribe((res) => {
+      expect(res.success).toBe(true);
+    });
+
+    const req = httpMock.expectOne('http://127.0.0.1:8001/api/tickets/101');
+    expect(req.request.method).toBe('DELETE');
+    req.flush({ success: true });
+  });
+});

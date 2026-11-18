@@ -21,6 +21,18 @@ export interface SupportTicket {
   };
 }
 
+export interface UpdateTicketPayload {
+  priority: string;
+  status: string;
+  description?: string;
+}
+
+export interface TicketMutationResponse {
+  success?: boolean;
+  message?: string;
+  data?: SupportTicket;
+}
+
 export interface TicketHistoryItem {
   id?: number | string;
   fecha: string;
@@ -75,5 +87,23 @@ export class TicketService {
       `${this.apiUrl}/tickets/history`
     );
   }
-}
 
+  /**
+   * Actualiza el estado y/o prioridad de un ticket existente.
+   * Consume: PUT http://127.0.0.1:8001/api/tickets/:id
+   */
+  updateTicket(
+    id: number | string,
+    payload: UpdateTicketPayload
+  ): Observable<TicketMutationResponse> {
+    return this.http.put<TicketMutationResponse>(`${this.apiUrl}/tickets/${id}`, payload);
+  }
+
+  /**
+   * Elimina un ticket del microservicio de soporte.
+   * Consume: DELETE http://127.0.0.1:8001/api/tickets/:id
+   */
+  deleteTicket(id: number | string): Observable<TicketMutationResponse> {
+    return this.http.delete<TicketMutationResponse>(`${this.apiUrl}/tickets/${id}`);
+  }
+}

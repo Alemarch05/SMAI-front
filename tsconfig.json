@@ -18,6 +18,7 @@
       "@core/*": ["./src/app/core/*"],
       "@customer/*": ["./src/app/customer/*"],
       "@support/*": ["./src/app/support/*"],
+      "@admin/*": ["./src/app/admin/*"],
       "@environments/*": ["./src/environments/*"]
     }
   },

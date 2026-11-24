@@ -66,6 +66,29 @@ export class AuthService {
     return !!this.getToken();
   }
 
+  getUserRole(): string | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+      return null;
+    }
+
+    try {
+      const user: unknown = JSON.parse(storedUser);
+      if (typeof user !== 'object' || user === null || !('role' in user)) {
+        return null;
+      }
+
+      return typeof user.role === 'string' ? user.role : null;
+    } catch (error) {
+      console.error('No se pudo leer el rol del usuario guardado.', error);
+      return null;
+    }
+  }
+
   logout(): void {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem('access_token');

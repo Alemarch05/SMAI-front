@@ -9,57 +9,58 @@
     
     <mat-nav-list class="menu-list">
 
-      <!-- ================= 1. SECCIÓN USUARIO ================= -->
-      <div class="menu-group">
-        <h3 class="group-title">usuario</h3>
-        
-        <!-- <a mat-list-item routerLink="diagnostic-menu" routerLinkActive="active-link"> -->
-        <a mat-list-item routerLink="/customer/support" routerLinkActive="active-link">
-          <span matListItemTitle>Solicitar ayuda</span>
-        </a>
-        <a mat-list-item routerLink="/customer/history" routerLinkActive="active-link">
-          <span matListItemTitle>Consultar historial</span>
-        </a>
-      </div>
-
-      <mat-divider></mat-divider>
-
-      <!-- ================= 2. SECCIÓN SOPORTE TI ================= -->
-      <div class="menu-group">
-        <div class="group-header">
-          <h3 class="group-title">Soporte TI</h3>
-          <mat-icon class="lock-icon">lock</mat-icon>
+      @if (showCustomerMenu) {
+        <div class="menu-group">
+          <h3 class="group-title">usuario</h3>
+          <a mat-list-item routerLink="/customer/support" routerLinkActive="active-link">
+            <span matListItemTitle>Solicitar ayuda</span>
+          </a>
+          <a mat-list-item routerLink="/customer/history" routerLinkActive="active-link">
+            <span matListItemTitle>Consultar historial</span>
+          </a>
         </div>
-        
-        <a mat-list-item routerLink="/support/tickets" routerLinkActive="active-link">
-          <span matListItemTitle>Tickets</span>
-        </a>
-        <a mat-list-item routerLink="/support/history" routerLinkActive="active-link">
-          <span matListItemTitle>Consultar historial</span>
-        </a>
-      </div>
 
-      <mat-divider></mat-divider>
+        <mat-divider></mat-divider>
+      }
 
-      <!-- ================= 3. SECCIÓN ADMINISTRADOR ================= -->
-      <div class="menu-group">
-        <div class="group-header">
-          <h3 class="group-title">Administrador</h3>
-          <mat-icon class="lock-icon">lock</mat-icon>
+      @if (showSupportMenu) {
+        <div class="menu-group">
+          <div class="group-header">
+            <h3 class="group-title">Soporte TI</h3>
+          </div>
+
+          <a mat-list-item routerLink="/support/tickets" routerLinkActive="active-link">
+            <span matListItemTitle>Tickets</span>
+          </a>
+          <a mat-list-item routerLink="/support/history" routerLinkActive="active-link">
+            <span matListItemTitle>Consultar historial</span>
+          </a>
         </div>
-        
-        <a mat-list-item routerLink="/admin/users" routerLinkActive="active-link">
-          <span matListItemTitle>Administrar usuarios</span>
-        </a>
-        <a mat-list-item routerLink="/admin/tickets" routerLinkActive="active-link">
-          <span matListItemTitle>Administrar tickets</span>
-        </a>
-        <a mat-list-item routerLink="/admin/train-model" routerLinkActive="active-link">
-          <span matListItemTitle>Entrenar modelo</span>
-        </a>
-      </div>
 
-      <mat-divider></mat-divider>
+        @if (showAdminMenu) {
+          <mat-divider></mat-divider>
+        }
+      }
+
+      @if (showAdminMenu) {
+        <div class="menu-group">
+          <div class="group-header">
+            <h3 class="group-title">Administrador</h3>
+          </div>
+
+          <a mat-list-item routerLink="/admin/users" routerLinkActive="active-link">
+            <span matListItemTitle>Administrar usuarios</span>
+          </a>
+          <a mat-list-item routerLink="/admin/tickets" routerLinkActive="active-link">
+            <span matListItemTitle>Administrar tickets</span>
+          </a>
+          <a mat-list-item routerLink="/admin/train-model" routerLinkActive="active-link">
+            <span matListItemTitle>Entrenar modelo</span>
+          </a>
+        </div>
+
+        <mat-divider></mat-divider>
+      }
     </mat-nav-list>
 
     <!-- Ilustración/Branding inferior -->

@@ -13,6 +13,11 @@ import { AuthService } from '../../../core/services/auth/auth.service';
 export class MainLayoutComponent {
   private authService = inject(AuthService);
 
+  readonly userRole = this.authService.getUserRole();
+  readonly showCustomerMenu = this.userRole === 'cliente';
+  readonly showSupportMenu = this.userRole === 'soporte' || this.userRole === 'admin';
+  readonly showAdminMenu = this.userRole === 'admin';
+
   logout(): void {
     this.authService.logout();
   }

@@ -22,7 +22,7 @@ describe('UserManagementComponent', () => {
     const req = httpMock.expectOne('http://127.0.0.1:8000/api/users');
     req.flush([
       { id: 1, name: 'Santiago Admin', email: 'santiago@smai.com', role: 'admin' },
-      { id: 2, name: 'Agente Soporte', email: 'soporte@smai.com', role: 'support' }
+      { id: 2, name: 'Agente Soporte', email: 'soporte@smai.com', role: 'soporte' }
     ]);
     fixture.detectChanges();
   });
@@ -69,7 +69,7 @@ describe('UserManagementComponent', () => {
       id: 2,
       name: 'Agente Soporte',
       email: 'soporte@smai.com',
-      role: 'support'
+      role: 'soporte'
     });
 
     component.confirmDeleteUser();

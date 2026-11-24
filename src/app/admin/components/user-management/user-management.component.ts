@@ -71,8 +71,8 @@ export class UserManagementComponent implements OnInit {
 
   readonly roleOptions = [
     { value: 'admin', label: 'Administrador' },
-    { value: 'support', label: 'Soporte TI' },
-    { value: 'customer', label: 'Cliente' }
+    { value: 'soporte', label: 'Soporte TI' },
+    { value: 'cliente', label: 'Cliente' }
   ];
 
   readonly dataSource = new MatTableDataSource<AdminUser>([]);
@@ -182,7 +182,7 @@ export class UserManagementComponent implements OnInit {
     this.userForm.reset({
       name: '',
       email: '',
-      role: 'customer',
+      role: 'cliente',
       password: ''
     });
     this.userForm.controls.password.setValidators([
@@ -398,9 +398,9 @@ export class UserManagementComponent implements OnInit {
       return 'admin';
     }
     if (normalized.includes('support') || normalized.includes('soporte') || normalized.includes('tecnico')) {
-      return 'support';
+      return 'soporte';
     }
-    return 'customer';
+    return 'cliente';
   }
 
   private configureFilterPredicate(): void {

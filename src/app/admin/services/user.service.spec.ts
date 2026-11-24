@@ -38,7 +38,7 @@ describe('UserService', () => {
     const payload: CreateUserPayload = {
       name: 'Nuevo Soporte',
       email: 'soporte@smai.com',
-      role: 'support',
+      role: 'soporte',
       password: 'password123'
     };
 

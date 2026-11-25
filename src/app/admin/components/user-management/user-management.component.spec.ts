@@ -21,8 +21,8 @@ describe('UserManagementComponent', () => {
 
     const req = httpMock.expectOne('http://127.0.0.1:8000/api/users');
     req.flush([
-      { id: 1, name: 'Santiago Admin', email: 'santiago@smai.com', role: 'admin' },
-      { id: 2, name: 'Agente Soporte', email: 'soporte@smai.com', role: 'soporte' }
+      { id: 1, name: 'Santiago Admin', email: 'santiago@smai.com', role: 'admin', role_id: 1 },
+      { id: 2, name: 'Agente Soporte', email: 'soporte@smai.com', role: 'soporte', role_id: 2 }
     ]);
     fixture.detectChanges();
   });
@@ -36,12 +36,13 @@ describe('UserManagementComponent', () => {
     expect(component.dataSource.data.length).toBe(2);
   });
 
-  it('should update a user when in edit mode', () => {
+  it('should update a user omitting password when left blank', () => {
     component.editingUser.set({
       id: 1,
       name: 'Santiago Admin',
       email: 'santiago@smai.com',
-      role: 'admin'
+      role: 'admin',
+      role_id: 1
     });
     component.userForm.setValue({
       name: 'Santiago Cárdenas',
@@ -57,8 +58,10 @@ describe('UserManagementComponent', () => {
     expect(putReq.request.body).toEqual({
       name: 'Santiago Cárdenas',
       email: 'santiago@smai.com',
-      role: 'admin'
+      role: 'admin',
+      role_id: 1
     });
+    expect(putReq.request.body.password).toBeUndefined();
     putReq.flush({ success: true, message: 'Actualizado' });
 
     expect(component.users()[0].name).toBe('Santiago Cárdenas');
@@ -69,7 +72,8 @@ describe('UserManagementComponent', () => {
       id: 2,
       name: 'Agente Soporte',
       email: 'soporte@smai.com',
-      role: 'soporte'
+      role: 'soporte',
+      role_id: 2
     });
 
     component.confirmDeleteUser();

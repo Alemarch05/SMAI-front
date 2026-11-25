@@ -32,6 +32,12 @@ import {
 
 export type RoleChipVariant = 'role--admin' | 'role--support' | 'role--customer';
 
+export interface RoleOption {
+  value: string;
+  roleId: number;
+  label: string;
+}
+
 @Component({
   selector: 'app-user-management',
   standalone: true,
@@ -69,10 +75,11 @@ export class UserManagementComponent implements OnInit {
     'actions'
   ];
 
-  readonly roleOptions = [
-    { value: 'admin', label: 'Administrador' },
-    { value: 'soporte', label: 'Soporte TI' },
-    { value: 'cliente', label: 'Cliente' }
+  // Opciones compatibles con UserController en Laravel y roleGuard
+  readonly roleOptions: readonly RoleOption[] = [
+    { value: 'admin', roleId: 1, label: 'Administrador' },
+    { value: 'soporte', roleId: 2, label: 'Soporte TI' },
+    { value: 'cliente', roleId: 3, label: 'Cliente' }
   ];
 
   readonly dataSource = new MatTableDataSource<AdminUser>([]);
@@ -96,11 +103,11 @@ export class UserManagementComponent implements OnInit {
     () => this.users().filter((u) => this.getRoleChipClass(u.role) === 'role--support').length
   );
 
-  // Formulario reactivo para Crear y Editar usuarios
+  // Formulario reactivo alineado con UserController (name, email, role, password)
   readonly userForm = this.fb.group({
     name: this.fb.nonNullable.control('', [Validators.required, Validators.minLength(3)]),
     email: this.fb.nonNullable.control('', [Validators.required, Validators.email]),
-    role: this.fb.nonNullable.control('customer', [Validators.required]),
+    role: this.fb.nonNullable.control('user', [Validators.required]),
     password: this.fb.nonNullable.control('')
   });
 
@@ -144,11 +151,11 @@ export class UserManagementComponent implements OnInit {
         },
         error: (err: HttpErrorResponse) => {
           console.error('Error al cargar usuarios:', err);
-          this.snackBar.open(
-            'No fue posible obtener la lista de usuarios (puerto 8000).',
-            'Cerrar',
-            { duration: 4500 }
+          const msg = this.extractBackendError(
+            err,
+            'No fue posible obtener la lista de usuarios (puerto 8000).'
           );
+          this.snackBar.open(msg, 'Cerrar', { duration: 5000 });
         }
       });
   }
@@ -173,16 +180,17 @@ export class UserManagementComponent implements OnInit {
   }
 
   /**
-   * Abre el modal en modo Creación con contraseña obligatoria.
+   * Abre el modal en modo Creación (contraseña obligatoria).
    */
   openCreateDialog(): void {
     this.editingUser.set(null);
     this.hidePassword.set(true);
 
+    const defaultRole = this.detectPreferredCustomerRole();
     this.userForm.reset({
       name: '',
       email: '',
-      role: 'cliente',
+      role: defaultRole,
       password: ''
     });
     this.userForm.controls.password.setValidators([
@@ -202,7 +210,7 @@ export class UserManagementComponent implements OnInit {
   }
 
   /**
-   * Abre el modal en modo Edición precargando los datos del usuario seleccionado.
+   * Abre el modal en modo Edición (contraseña opcional si se deja en blanco).
    */
   openEditDialog(user: AdminUser): void {
     this.editingUser.set(user);
@@ -211,9 +219,11 @@ export class UserManagementComponent implements OnInit {
     this.userForm.reset({
       name: user.name,
       email: user.email,
-      role: this.normalizeRoleValue(user.role),
+      role: this.normalizeRoleValue(user.role, user.role_id),
       password: ''
     });
+    // Al editar, la contraseña NO es obligatoria si se deja vacía
+    this.userForm.controls.password.clearValidators();
     this.userForm.controls.password.setValidators([Validators.minLength(6)]);
     this.userForm.controls.password.updateValueAndValidity();
 
@@ -228,7 +238,7 @@ export class UserManagementComponent implements OnInit {
   }
 
   /**
-   * Guarda los cambios creando o actualizando el usuario en el microservicio (puerto 8000).
+   * Crea o actualiza el usuario enviando los campos exactos esperados por UserController en Laravel.
    */
   saveUser(): void {
     if (this.userForm.invalid || this.isSaving()) {
@@ -238,14 +248,24 @@ export class UserManagementComponent implements OnInit {
 
     const raw = this.userForm.getRawValue();
     const currentEditing = this.editingUser();
+    const trimmedPassword = raw.password.trim();
+    const mappedRoleId = this.resolveRoleId(raw.role);
+
     this.isSaving.set(true);
 
     if (currentEditing) {
+      // Al editar: si la contraseña está en blanco, NO se envía en el JSON
       const updatePayload: UpdateUserPayload = {
         name: raw.name.trim(),
         email: raw.email.trim(),
         role: raw.role,
-        ...(raw.password.trim() ? { password: raw.password.trim() } : {})
+        role_id: mappedRoleId,
+        ...(trimmedPassword.length > 0
+          ? {
+              password: trimmedPassword,
+              password_confirmation: trimmedPassword
+            }
+          : {})
       };
 
       this.userService
@@ -258,27 +278,38 @@ export class UserManagementComponent implements OnInit {
           next: (res) => {
             const updatedList = this.users().map((u) =>
               u.id === currentEditing.id
-                ? { ...u, name: updatePayload.name, email: updatePayload.email, role: updatePayload.role }
+                ? {
+                    ...u,
+                    name: updatePayload.name,
+                    email: updatePayload.email,
+                    role: updatePayload.role,
+                    role_id: mappedRoleId
+                  }
                 : u
             );
             this.users.set(updatedList);
             this.dataSource.data = updatedList;
             this.closeDialog();
-            this.snackBar.open(res?.message || 'Usuario actualizado correctamente.', 'Cerrar', {
-              duration: 3500
-            });
+            this.snackBar.open(
+              res?.message || 'Usuario actualizado correctamente.',
+              'Cerrar',
+              { duration: 3500 }
+            );
           },
           error: (err: HttpErrorResponse) => {
             console.error('Error al actualizar usuario:', err);
-            this.snackBar.open('Error al actualizar el usuario.', 'Cerrar', { duration: 4000 });
+            const msg = this.extractBackendError(err, 'Error al actualizar el usuario.');
+            this.snackBar.open(msg, 'Cerrar', { duration: 5000 });
           }
         });
     } else {
       const createPayload: CreateUserPayload = {
         name: raw.name.trim(),
         email: raw.email.trim(),
+        password: trimmedPassword,
+        password_confirmation: trimmedPassword,
         role: raw.role,
-        password: raw.password.trim()
+        role_id: mappedRoleId
       };
 
       this.userService
@@ -289,25 +320,31 @@ export class UserManagementComponent implements OnInit {
         )
         .subscribe({
           next: (res) => {
-            const createdUser: AdminUser = res?.data ?? res?.user ?? {
-              id: Date.now(),
-              name: createPayload.name,
-              email: createPayload.email,
-              role: createPayload.role
-            };
+            const createdUser: AdminUser = res?.data ??
+              res?.user ?? {
+                id: Date.now(),
+                name: createPayload.name,
+                email: createPayload.email,
+                role: createPayload.role,
+                role_id: mappedRoleId
+              };
             const updatedList = [createdUser, ...this.users()];
             this.users.set(updatedList);
             this.dataSource.data = updatedList;
             this.closeDialog();
-            this.snackBar.open(res?.message || 'Usuario creado exitosamente.', 'Cerrar', {
-              duration: 3500
-            });
+            this.snackBar.open(
+              res?.message || 'Usuario creado exitosamente.',
+              'Cerrar',
+              { duration: 3500 }
+            );
           },
           error: (err: HttpErrorResponse) => {
             console.error('Error al crear usuario:', err);
-            this.snackBar.open('No se pudo crear el usuario. Verifique los datos.', 'Cerrar', {
-              duration: 4000
-            });
+            const msg = this.extractBackendError(
+              err,
+              'No se pudo crear el usuario. Verifique los datos ingresados.'
+            );
+            this.snackBar.open(msg, 'Cerrar', { duration: 5000 });
           }
         });
     }
@@ -350,15 +387,16 @@ export class UserManagementComponent implements OnInit {
           this.users.set(remaining);
           this.dataSource.data = remaining;
           this.closeDialog();
-          this.snackBar.open(res?.message || 'Usuario eliminado correctamente.', 'Cerrar', {
-            duration: 3500
-          });
+          this.snackBar.open(
+            res?.message || 'Usuario eliminado correctamente.',
+            'Cerrar',
+            { duration: 3500 }
+          );
         },
         error: (err: HttpErrorResponse) => {
           console.error('Error al eliminar usuario:', err);
-          this.snackBar.open('No fue posible eliminar el usuario.', 'Cerrar', {
-            duration: 4000
-          });
+          const msg = this.extractBackendError(err, 'No fue posible eliminar el usuario.');
+          this.snackBar.open(msg, 'Cerrar', { duration: 5000 });
         }
       });
   }
@@ -370,43 +408,127 @@ export class UserManagementComponent implements OnInit {
     this.userToDelete.set(null);
   }
 
-  getRoleLabel(rawRole: string | null | undefined): string {
+  getRoleLabel(rawRole: string | null | undefined, roleId?: number): string {
     const normalized = this.normalizeText(rawRole ?? '');
-    if (normalized.includes('admin')) {
+    if (roleId === 1 || normalized.includes('admin')) {
       return 'Administrador';
     }
-    if (normalized.includes('support') || normalized.includes('soporte') || normalized.includes('tecnico')) {
+    if (
+      roleId === 2 ||
+      normalized.includes('support') ||
+      normalized.includes('soporte') ||
+      normalized.includes('tecnico')
+    ) {
       return 'Soporte TI';
     }
-    return 'Cliente';
+    return 'Usuario / Cliente';
   }
 
-  getRoleChipClass(rawRole: string | null | undefined): RoleChipVariant {
+  getRoleChipClass(rawRole: string | null | undefined, roleId?: number): RoleChipVariant {
     const normalized = this.normalizeText(rawRole ?? '');
-    if (normalized.includes('admin')) {
+    if (roleId === 1 || normalized.includes('admin')) {
       return 'role--admin';
     }
-    if (normalized.includes('support') || normalized.includes('soporte') || normalized.includes('tecnico')) {
+    if (
+      roleId === 2 ||
+      normalized.includes('support') ||
+      normalized.includes('soporte') ||
+      normalized.includes('tecnico')
+    ) {
       return 'role--support';
     }
     return 'role--customer';
   }
 
-  private normalizeRoleValue(rawRole: string | null | undefined): string {
+  private resolveRoleId(roleValue: string): number {
+    const normalized = this.normalizeText(roleValue);
+    if (normalized.includes('admin') || normalized === '1') {
+      return 1;
+    }
+    if (
+      normalized.includes('support') ||
+      normalized.includes('soporte') ||
+      normalized.includes('tecnico') ||
+      normalized === '2'
+    ) {
+      return 2;
+    }
+    return 3;
+  }
+
+  private normalizeRoleValue(rawRole: string | null | undefined, roleId?: number): string {
     const normalized = this.normalizeText(rawRole ?? '');
-    if (normalized.includes('admin')) {
+    if (roleId === 1 || normalized.includes('admin')) {
       return 'admin';
     }
-    if (normalized.includes('support') || normalized.includes('soporte') || normalized.includes('tecnico')) {
+    if (
+      roleId === 2 ||
+      normalized.includes('support') ||
+      normalized.includes('soporte') ||
+      normalized.includes('tecnico')
+    ) {
       return 'soporte';
     }
+    return this.detectPreferredCustomerRole();
+  }
+
+  private detectPreferredCustomerRole(): string {
+    const existingCustomer = this.users().find(
+      (u) => this.getRoleChipClass(u.role, u.role_id) === 'role--customer'
+    );
+    if (existingCustomer && existingCustomer.role) {
+      const lower = existingCustomer.role.toLowerCase();
+      if (['cliente', 'user', 'customer', 'usuario'].includes(lower)) {
+        return lower;
+      }
+    }
     return 'cliente';
+  }
+
+  /**
+   * Extrae el mensaje de error real devuelto por Laravel (errors o message).
+   */
+  private extractBackendError(err: HttpErrorResponse, fallback: string): string {
+    const errorBody = err.error;
+
+    if (typeof errorBody === 'string' && errorBody.trim().length > 0) {
+      return errorBody;
+    }
+
+    if (errorBody && typeof errorBody === 'object') {
+      const record = errorBody as Record<string, unknown>;
+
+      const validationErrors = record['errors'];
+      if (validationErrors && typeof validationErrors === 'object') {
+        const messages = Object.values(validationErrors as Record<string, unknown>)
+          .flatMap((val) => (Array.isArray(val) ? val : [val]))
+          .filter((msg): msg is string => typeof msg === 'string' && msg.trim().length > 0);
+
+        if (messages.length > 0) {
+          return messages.join(' | ');
+        }
+      }
+
+      if (typeof record['message'] === 'string' && record['message'].trim().length > 0) {
+        return record['message'];
+      }
+
+      if (typeof record['error'] === 'string' && record['error'].trim().length > 0) {
+        return record['error'];
+      }
+    }
+
+    if (err.status === 0) {
+      return 'Sin conexión con user-service (puerto 8000). Verifique que el backend esté activo.';
+    }
+
+    return fallback;
   }
 
   private configureFilterPredicate(): void {
     this.dataSource.filterPredicate = (user: AdminUser, filter: string): boolean => {
       const searchable = this.normalizeText(
-        `${user.id} ${user.name} ${user.email} ${user.role} ${this.getRoleLabel(user.role)}`
+        `${user.id} ${user.name} ${user.email} ${user.role} ${this.getRoleLabel(user.role, user.role_id)}`
       );
       return searchable.includes(filter);
     };
@@ -427,11 +549,32 @@ export class UserManagementComponent implements OnInit {
 
     return rawList.map((entry, idx) => {
       const record = (entry ?? {}) as Record<string, unknown>;
+      const rawRoleField = record['role'] ?? record['rol'];
+      const rawRoleId = record['role_id'] ? Number(record['role_id']) : undefined;
+
+      let resolvedRole = 'user';
+      let resolvedRoleId = rawRoleId;
+
+      if (rawRoleField && typeof rawRoleField === 'object') {
+        const roleObj = rawRoleField as Record<string, unknown>;
+        resolvedRole = String(roleObj['slug'] ?? roleObj['name'] ?? 'user');
+        if (roleObj['id']) {
+          resolvedRoleId = Number(roleObj['id']);
+        }
+      } else if (rawRoleField !== undefined && rawRoleField !== null) {
+        resolvedRole = String(rawRoleField);
+      } else if (resolvedRoleId === 1) {
+        resolvedRole = 'admin';
+      } else if (resolvedRoleId === 2) {
+        resolvedRole = 'support';
+      }
+
       return {
         id: (record['id'] as number | string) ?? idx + 1,
         name: String(record['name'] ?? record['nombre'] ?? 'Sin nombre'),
         email: String(record['email'] ?? record['correo'] ?? ''),
-        role: String(record['role'] ?? record['rol'] ?? 'customer'),
+        role: resolvedRole,
+        role_id: resolvedRoleId,
         status: String(record['status'] ?? 'Activo')
       };
     });

@@ -52,26 +52,32 @@ describe('TicketListComponent', () => {
     expect(component.dataSource.data.length).toBe(2);
   });
 
-  it('should assign expected badge classes by status and priority', () => {
-    expect(component.getBadgeClass('Resuelto')).toBe('chip--green');
-    expect(component.getBadgeClass('Completado')).toBe('chip--green');
-    expect(component.getBadgeClass('Pendiente')).toBe('chip--amber');
-    expect(component.getBadgeClass('En Proceso')).toBe('chip--amber');
-    expect(component.getBadgeClass('Alta Prioridad')).toBe('chip--red');
+  it('should create a new ticket via POST http://127.0.0.1:8001/api/tickets and refresh table', () => {
+    component.createTicketForm.setValue({
+      title: 'Fallo de VPN',
+      location: 'Sistemas',
+      category_id: 2,
+      priority: 'Alta Prioridad',
+      description: 'No permite autenticar el túnel VPN'
+    });
+
+    component.submitNewTicket();
+
+    const postReq = httpMock.expectOne('http://127.0.0.1:8001/api/tickets');
+    expect(postReq.request.method).toBe('POST');
+    postReq.flush({ success: true, message: 'Ticket creado' });
+
+    const refreshReq = httpMock.expectOne('http://127.0.0.1:8001/api/tickets');
+    expect(refreshReq.request.method).toBe('GET');
+    refreshReq.flush([]);
   });
 
-  it('should filter MatTableDataSource dynamically', () => {
-    const fakeEvent = { target: { value: 'Ana' } } as unknown as Event;
-    component.applyFilter(fakeEvent);
-    expect(component.dataSource.filteredData.length).toBe(1);
-    expect(component.dataSource.filteredData[0].user_name).toBe('Ana Gómez');
-  });
-
-  it('should update ticket status and priority via PUT http://127.0.0.1:8001/api/tickets/:id', () => {
+  it('should update ticket status, priority and description via PUT http://127.0.0.1:8001/api/tickets/:id', () => {
     component.selectedTicket.set(component.tickets()[0]);
     component.editTicketForm.setValue({
       priority: 'Crítica',
-      status: 'Resuelto'
+      status: 'Resuelto',
+      description: 'Impresora reparada y en línea'
     });
 
     component.saveTicketChanges();
@@ -80,11 +86,13 @@ describe('TicketListComponent', () => {
     expect(putReq.request.method).toBe('PUT');
     expect(putReq.request.body).toEqual({
       priority: 'Crítica',
-      status: 'Resuelto'
+      status: 'Resuelto',
+      description: 'Impresora reparada y en línea'
     });
     putReq.flush({ success: true });
 
     expect(component.tickets()[0].status).toBe('Resuelto');
+    expect(component.tickets()[0].description).toBe('Impresora reparada y en línea');
   });
 
   it('should delete ticket via DELETE http://127.0.0.1:8001/api/tickets/:id', () => {

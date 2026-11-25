@@ -12,6 +12,7 @@ import {
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 
@@ -26,6 +27,7 @@ import { MaterialModule } from '@shared/material.module';
 import { AuthService } from '@core/services/auth/auth.service';
 import {
   ApiCollectionResponse,
+  CreateSupportTicketPayload,
   SupportTicket,
   TicketService,
   TicketResolutionPayload,
@@ -56,10 +58,12 @@ export class TicketListComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly paginator = viewChild(MatPaginator);
   private readonly sort = viewChild(MatSort);
+  private readonly createDialogTemplate = viewChild<TemplateRef<unknown>>('createTicketTemplate');
   private readonly editDialogTemplate = viewChild<TemplateRef<unknown>>('editTicketTemplate');
   private readonly deleteDialogTemplate = viewChild<TemplateRef<unknown>>('deleteTicketTemplate');
   private readonly resolutionDialogTemplate =
@@ -67,7 +71,6 @@ export class TicketListComponent implements OnInit {
 
   private activeDialogRef: MatDialogRef<unknown> | null = null;
 
-  // Columnas incluyendo 'actions' para Editar y Eliminar por fila
   readonly displayedColumns: readonly string[] = [
     'id',
     'created_at',
@@ -82,7 +85,6 @@ export class TicketListComponent implements OnInit {
     this.normalizeText(this.authService.getUserRole() ?? '').includes(role)
   );
 
-  // Opciones para los selectores de Edición de Ticket
   readonly priorityOptions: readonly string[] = [
     'Baja',
     'Media',
@@ -97,10 +99,25 @@ export class TicketListComponent implements OnInit {
     'Completado'
   ];
 
+  readonly locationOptions: readonly string[] = [
+    'Operaciones y Planta Física',
+    'Sistemas',
+    'Administración',
+    'Trabajo Remoto (Home Office)'
+  ];
+
+  readonly categoryOptions: readonly { id: number; name: string }[] = [
+    { id: 1, name: 'Hardware y Encendido' },
+    { id: 2, name: 'Red y Conexión' },
+    { id: 3, name: 'Software y Aplicaciones' },
+    { id: 4, name: 'Lentitud del Sistema' }
+  ];
+
   readonly dataSource = new MatTableDataSource<SupportTicket>([]);
 
   readonly tickets = signal<SupportTicket[]>([]);
   readonly isLoading = signal<boolean>(true);
+  readonly isCreating = signal<boolean>(false);
   readonly isUpdating = signal<boolean>(false);
   readonly isDeleting = signal<boolean>(false);
   readonly assigningTicketId = signal<string | null>(null);
@@ -120,10 +137,20 @@ export class TicketListComponent implements OnInit {
     () => this.tickets().filter((t) => this.getBadgeClass(t.status) === 'chip--amber').length
   );
 
-  // Formulario reactivo para editar estado y prioridad del ticket
+  // Formulario reactivo para Crear Ticket (POST http://127.0.0.1:8001/api/tickets)
+  readonly createTicketForm = this.fb.group({
+    title: this.fb.nonNullable.control('', [Validators.required, Validators.minLength(3)]),
+    location: this.fb.nonNullable.control('Sistemas', [Validators.required]),
+    category_id: this.fb.nonNullable.control(1, [Validators.required]),
+    priority: this.fb.nonNullable.control('Media', [Validators.required]),
+    description: this.fb.nonNullable.control('', [Validators.required, Validators.minLength(5)])
+  });
+
+  // Formulario reactivo para Editar estado, prioridad o descripción (PUT http://127.0.0.1:8001/api/tickets/:id)
   readonly editTicketForm = this.fb.group({
     priority: this.fb.nonNullable.control('Media', [Validators.required]),
-    status: this.fb.nonNullable.control('Pendiente', [Validators.required])
+    status: this.fb.nonNullable.control('Pendiente', [Validators.required]),
+    description: this.fb.nonNullable.control('', [Validators.required, Validators.minLength(3)])
   });
 
   readonly resolutionForm = this.fb.group({
@@ -174,12 +201,12 @@ export class TicketListComponent implements OnInit {
           this.dataSource.data = normalized;
         },
         error: (err: HttpErrorResponse) => {
-          console.error('Error al obtener tickets abiertos:', err);
-          this.snackBar.open(
-            'No fue posible cargar los tickets abiertos. Verifique el servicio de soporte.',
-            'Cerrar',
-            { duration: 4500 }
+          console.error('Error al obtener tickets:', err);
+          const msg = this.extractBackendError(
+            err,
+            'No fue posible cargar los tickets abiertos (puerto 8001).'
           );
+          this.snackBar.open(msg, 'Cerrar', { duration: 5000 });
         }
       });
   }
@@ -204,7 +231,83 @@ export class TicketListComponent implements OnInit {
   }
 
   /**
-   * Abre el modal de edición precargando prioridad y estado del ticket seleccionado.
+   * Abre el modal para crear un nuevo ticket o permite ir a la vista de creación.
+   */
+  openCreateTicketDialog(): void {
+    this.createTicketForm.reset({
+      title: '',
+      location: 'Sistemas',
+      category_id: 1,
+      priority: 'Media',
+      description: ''
+    });
+
+    const tpl = this.createDialogTemplate();
+    if (tpl) {
+      this.activeDialogRef = this.dialog.open(tpl, {
+        width: '500px',
+        maxWidth: '95vw',
+        disableClose: true
+      });
+    } else {
+      this.router.navigate(['/create-ticket']);
+    }
+  }
+
+  /**
+   * Redirige a la vista de creación con diagnóstico si el usuario prefiere el asistente.
+   */
+  goToCreateTicketView(): void {
+    this.closeDialog();
+    this.router.navigate(['/create-ticket']);
+  }
+
+  /**
+   * Envía POST http://127.0.0.1:8001/api/tickets y refresca automáticamente la tabla.
+   */
+  submitNewTicket(): void {
+    if (this.createTicketForm.invalid || this.isCreating()) {
+      this.createTicketForm.markAllAsTouched();
+      return;
+    }
+
+    const raw = this.createTicketForm.getRawValue();
+    const payload: CreateSupportTicketPayload = {
+      title: raw.title.trim(),
+      location: raw.location,
+      category_id: raw.category_id,
+      priority: raw.priority,
+      description: raw.description.trim()
+    };
+
+    this.isCreating.set(true);
+
+    this.ticketService
+      .createTicket(payload)
+      .pipe(
+        finalize(() => this.isCreating.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (res) => {
+          this.closeDialog();
+          this.snackBar.open(
+            res?.message || 'Ticket creado exitosamente.',
+            'Cerrar',
+            { duration: 3500 }
+          );
+          this.loadOpenTickets();
+        },
+        error: (err: HttpErrorResponse) => {
+          console.error('Error al crear ticket:', err);
+          const msg = this.extractBackendError(err, 'No fue posible crear el ticket.');
+          this.snackBar.open(msg, 'Cerrar', { duration: 5000 });
+        }
+      });
+  }
+
+  /**
+   * Abre el modal de edición precargando prioridad, estado y descripción del ticket.
    */
   openEditDialog(ticket: SupportTicket): void {
     if (!this.isAdmin) {
@@ -214,13 +317,14 @@ export class TicketListComponent implements OnInit {
     this.selectedTicket.set(ticket);
     this.editTicketForm.reset({
       priority: ticket.priority || 'Media',
-      status: ticket.status || 'Pendiente'
+      status: ticket.status || 'Pendiente',
+      description: ticket.description || ''
     });
 
     const tpl = this.editDialogTemplate();
     if (tpl) {
       this.activeDialogRef = this.dialog.open(tpl, {
-        width: '460px',
+        width: '480px',
         maxWidth: '95vw',
         disableClose: true
       });
@@ -228,7 +332,7 @@ export class TicketListComponent implements OnInit {
   }
 
   /**
-   * Envía PUT http://127.0.0.1:8001/api/tickets/:id con el nuevo estado y prioridad.
+   * Envía PUT http://127.0.0.1:8001/api/tickets/:id con estado, prioridad y descripción.
    */
   saveTicketChanges(): void {
     const target = this.selectedTicket();
@@ -237,7 +341,13 @@ export class TicketListComponent implements OnInit {
       return;
     }
 
-    const payload: UpdateTicketPayload = this.editTicketForm.getRawValue();
+    const raw = this.editTicketForm.getRawValue();
+    const payload: UpdateTicketPayload = {
+      priority: raw.priority,
+      status: raw.status,
+      description: raw.description.trim()
+    };
+
     this.isUpdating.set(true);
 
     this.ticketService
@@ -250,7 +360,12 @@ export class TicketListComponent implements OnInit {
         next: (res) => {
           const updatedList = this.tickets().map((item) =>
             item.id === target.id
-              ? { ...item, priority: payload.priority, status: payload.status }
+              ? {
+                  ...item,
+                  priority: payload.priority,
+                  status: payload.status,
+                  description: payload.description ?? item.description
+                }
               : item
           );
           this.tickets.set(updatedList);
@@ -264,11 +379,11 @@ export class TicketListComponent implements OnInit {
         },
         error: (err: HttpErrorResponse) => {
           console.error('Error al actualizar ticket:', err);
-          this.snackBar.open(
-            'Error al actualizar el ticket en el microservicio (puerto 8001).',
-            'Cerrar',
-            { duration: 4000 }
+          const msg = this.extractBackendError(
+            err,
+            'Error al actualizar el ticket en ticket-service (puerto 8001).'
           );
+          this.snackBar.open(msg, 'Cerrar', { duration: 5000 });
         }
       });
   }
@@ -292,7 +407,7 @@ export class TicketListComponent implements OnInit {
   }
 
   /**
-   * Ejecuta DELETE http://127.0.0.1:8001/api/tickets/:id tras confirmar la acción.
+   * Ejecuta DELETE http://127.0.0.1:8001/api/tickets/:id y actualiza la tabla automáticamente.
    */
   confirmDeleteTicket(): void {
     const target = this.ticketToDelete();
@@ -322,11 +437,11 @@ export class TicketListComponent implements OnInit {
         },
         error: (err: HttpErrorResponse) => {
           console.error('Error al eliminar ticket:', err);
-          this.snackBar.open(
-            'No fue posible eliminar el ticket seleccionado.',
-            'Cerrar',
-            { duration: 4000 }
+          const msg = this.extractBackendError(
+            err,
+            'No fue posible eliminar el ticket seleccionado.'
           );
+          this.snackBar.open(msg, 'Cerrar', { duration: 5000 });
         }
       });
   }
@@ -485,12 +600,6 @@ export class TicketListComponent implements OnInit {
     this.ticketToResolve.set(null);
   }
 
-  /**
-   * Retorna la clase visual dinámica para chips de Estado o Prioridad:
-   * - Verde: Resuelto / Completado
-   * - Amarillo/Naranja: Pendiente / En Proceso
-   * - Rojo: Alta Prioridad / Crítica / Urgente
-   */
   getBadgeClass(rawValue: string | null | undefined): BadgeVariant {
     const value = this.normalizeText(rawValue ?? '');
 
@@ -537,6 +646,43 @@ export class TicketListComponent implements OnInit {
     return !Number.isNaN(Date.parse(dateValue));
   }
 
+  private extractBackendError(err: HttpErrorResponse, fallback: string): string {
+    const errorBody = err.error;
+
+    if (typeof errorBody === 'string' && errorBody.trim().length > 0) {
+      return errorBody;
+    }
+
+    if (errorBody && typeof errorBody === 'object') {
+      const record = errorBody as Record<string, unknown>;
+
+      const validationErrors = record['errors'];
+      if (validationErrors && typeof validationErrors === 'object') {
+        const messages = Object.values(validationErrors as Record<string, unknown>)
+          .flatMap((val) => (Array.isArray(val) ? val : [val]))
+          .filter((msg): msg is string => typeof msg === 'string' && msg.trim().length > 0);
+
+        if (messages.length > 0) {
+          return messages.join(' | ');
+        }
+      }
+
+      if (typeof record['message'] === 'string' && record['message'].trim().length > 0) {
+        return record['message'];
+      }
+
+      if (typeof record['error'] === 'string' && record['error'].trim().length > 0) {
+        return record['error'];
+      }
+    }
+
+    if (err.status === 0) {
+      return 'Sin conexión con ticket-service (puerto 8001). Verifique que el backend esté activo.';
+    }
+
+    return fallback;
+  }
+
   private configureFilterPredicate(): void {
     this.dataSource.filterPredicate = (ticket: SupportTicket, filter: string): boolean => {
       const searchableContent = this.normalizeText(
@@ -574,7 +720,10 @@ export class TicketListComponent implements OnInit {
             record['customer_name'] ??
             'Usuario Cliente'
         ),
-        description: String(record['description'] ?? record['descripcion'] ?? 'Sin descripción'),
+        title: record['title'] ? String(record['title']) : undefined,
+        description: String(
+          record['description'] ?? record['descripcion'] ?? record['title'] ?? 'Sin descripción'
+        ),
         priority: String(record['priority'] ?? record['prioridad'] ?? 'Media'),
         status: String(record['status'] ?? record['estado'] ?? 'Pendiente'),
         assigned_to: (record['assigned_to'] as number | string | null | undefined) ?? null

@@ -7,6 +7,7 @@ export interface SupportTicket {
   id: number | string;
   created_at: string;
   user_name: string;
+  title?: string;
   description: string;
   priority: string;
   status: string;
@@ -20,6 +21,15 @@ export interface SupportTicket {
     name?: string;
     email?: string;
   };
+}
+
+export interface CreateSupportTicketPayload {
+  title: string;
+  location: string;
+  category_id: number;
+  description: string;
+  priority?: string;
+  status?: string;
 }
 
 export interface UpdateTicketPayload {
@@ -101,7 +111,17 @@ export class TicketService {
   }
 
   /**
-   * Actualiza el estado y/o prioridad de un ticket existente.
+   * Crea un nuevo ticket en ticket-service (puerto 8001).
+   * Consume: POST http://127.0.0.1:8001/api/tickets
+   */
+  createTicket(
+    payload: CreateSupportTicketPayload | Record<string, unknown>
+  ): Observable<TicketMutationResponse> {
+    return this.http.post<TicketMutationResponse>(`${this.apiUrl}/tickets`, payload);
+  }
+
+  /**
+   * Actualiza estado, prioridad o descripción de un ticket existente.
    * Consume: PUT http://127.0.0.1:8001/api/tickets/:id
    */
   updateTicket(

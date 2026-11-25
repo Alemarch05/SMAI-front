@@ -9,6 +9,7 @@ describe('TicketListComponent', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(async () => {
+    localStorage.setItem('user', JSON.stringify({ role: 'admin' }));
     await TestBed.configureTestingModule({
       imports: [TicketListComponent],
       providers: [provideHttpClient(), provideHttpClientTesting()]
@@ -43,6 +44,7 @@ describe('TicketListComponent', () => {
 
   afterEach(() => {
     httpMock.verify();
+    localStorage.removeItem('user');
   });
 
   it('should create and load open tickets', () => {
@@ -94,5 +96,44 @@ describe('TicketListComponent', () => {
     delReq.flush({ success: true });
 
     expect(component.tickets().length).toBe(1);
+  });
+
+  it('shows assignment instead of admin actions for support and updates the ticket after assignment', () => {
+    fixture.destroy();
+    localStorage.setItem('user', JSON.stringify({ role: 'soporte' }));
+    fixture = TestBed.createComponent(TicketListComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    httpMock.expectOne('http://127.0.0.1:8001/api/tickets').flush([
+      {
+        id: 1,
+        created_at: '2026-11-07T09:00:00Z',
+        user_name: 'Ana Gómez',
+        description: 'Fallo en impresora de red',
+        priority: 'Alta Prioridad',
+        status: 'En Proceso'
+      }
+    ]);
+    fixture.detectChanges();
+
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    expect(buttons.some((button) => button.textContent?.includes('Asignarme'))).toBe(true);
+    expect(fixture.nativeElement.querySelector('.action-btn--edit')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.action-btn--delete')).toBeNull();
+
+    component.assignTicket(component.tickets()[0]);
+    const request = httpMock.expectOne('http://127.0.0.1:8001/api/tickets/1/assign');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toBeNull();
+    request.flush({
+      success: true,
+      message: 'Ticket asignado al equipo de soporte y escalado',
+      data: { id: 1, assigned_to: 5, status: 'ESCALADO' }
+    });
+
+    expect(component.tickets()[0].assigned_to).toBe(5);
+    expect(component.tickets()[0].status).toBe('ESCALADO');
+    expect(component.isTicketAssigned(component.tickets()[0])).toBe(true);
   });
 });

@@ -23,6 +23,7 @@ import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dial
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { MaterialModule } from '@shared/material.module';
+import { AuthService } from '@core/services/auth/auth.service';
 import {
   ApiCollectionResponse,
   SupportTicket,
@@ -50,6 +51,7 @@ export type BadgeVariant = 'chip--green' | 'chip--amber' | 'chip--red' | 'chip--
 })
 export class TicketListComponent implements OnInit {
   private readonly ticketService = inject(TicketService);
+  private readonly authService = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
@@ -72,6 +74,10 @@ export class TicketListComponent implements OnInit {
     'status',
     'actions'
   ];
+  readonly isAdmin = this.normalizeText(this.authService.getUserRole() ?? '').includes('admin');
+  readonly canAssignTickets = ['soporte', 'support', 'tecnico'].some((role) =>
+    this.normalizeText(this.authService.getUserRole() ?? '').includes(role)
+  );
 
   // Opciones para los selectores de Edición de Ticket
   readonly priorityOptions: readonly string[] = [
@@ -94,6 +100,8 @@ export class TicketListComponent implements OnInit {
   readonly isLoading = signal<boolean>(true);
   readonly isUpdating = signal<boolean>(false);
   readonly isDeleting = signal<boolean>(false);
+  readonly assigningTicketId = signal<string | null>(null);
+  readonly assignedTicketIds = signal<Set<string>>(new Set());
   readonly searchTerm = signal<string>('');
 
   readonly selectedTicket = signal<SupportTicket | null>(null);
@@ -185,6 +193,10 @@ export class TicketListComponent implements OnInit {
    * Abre el modal de edición precargando prioridad y estado del ticket seleccionado.
    */
   openEditDialog(ticket: SupportTicket): void {
+    if (!this.isAdmin) {
+      return;
+    }
+
     this.selectedTicket.set(ticket);
     this.editTicketForm.reset({
       priority: ticket.priority || 'Media',
@@ -206,7 +218,7 @@ export class TicketListComponent implements OnInit {
    */
   saveTicketChanges(): void {
     const target = this.selectedTicket();
-    if (!target || this.editTicketForm.invalid || this.isUpdating()) {
+    if (!this.isAdmin || !target || this.editTicketForm.invalid || this.isUpdating()) {
       this.editTicketForm.markAllAsTouched();
       return;
     }
@@ -251,6 +263,10 @@ export class TicketListComponent implements OnInit {
    * Abre el modal de confirmación antes de eliminar un ticket.
    */
   openDeleteConfirm(ticket: SupportTicket): void {
+    if (!this.isAdmin) {
+      return;
+    }
+
     this.ticketToDelete.set(ticket);
     const tpl = this.deleteDialogTemplate();
     if (tpl) {
@@ -266,7 +282,7 @@ export class TicketListComponent implements OnInit {
    */
   confirmDeleteTicket(): void {
     const target = this.ticketToDelete();
-    if (!target || this.isDeleting()) {
+    if (!this.isAdmin || !target || this.isDeleting()) {
       return;
     }
 
@@ -299,6 +315,64 @@ export class TicketListComponent implements OnInit {
           );
         }
       });
+  }
+
+  assignTicket(ticket: SupportTicket): void {
+    if (
+      !this.canAssignTickets ||
+      this.assigningTicketId() !== null ||
+      this.isTicketAssigned(ticket)
+    ) {
+      return;
+    }
+
+    this.assigningTicketId.set(String(ticket.id));
+    this.ticketService
+      .assignTicket(ticket.id)
+      .pipe(
+        finalize(() => this.assigningTicketId.set(null)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (response) => {
+          this.assignedTicketIds.update((ids) => new Set(ids).add(String(ticket.id)));
+          const updatedList = this.tickets().map((item) =>
+            item.id === ticket.id
+              ? {
+                  ...item,
+                  assigned_to: response.data?.assigned_to ?? item.assigned_to,
+                  status: response.data?.status ?? item.status
+                }
+              : item
+          );
+          this.tickets.set(updatedList);
+          this.dataSource.data = updatedList;
+          this.snackBar.open(
+            response?.message || `Ticket #${ticket.id} asignado correctamente.`,
+            'Cerrar',
+            { duration: 3500 }
+          );
+        },
+        error: (err: HttpErrorResponse) => {
+          console.error('Error al asignar ticket:', err);
+          this.snackBar.open(
+            'No fue posible asignarte el ticket seleccionado.',
+            'Cerrar',
+            { duration: 4000 }
+          );
+        }
+      });
+  }
+
+  isTicketAssigning(ticket: SupportTicket): boolean {
+    return this.assigningTicketId() === String(ticket.id);
+  }
+
+  isTicketAssigned(ticket: SupportTicket): boolean {
+    return (
+      this.assignedTicketIds().has(String(ticket.id)) ||
+      (ticket.assigned_to !== null && ticket.assigned_to !== undefined)
+    );
   }
 
   closeDialog(): void {
@@ -399,7 +473,8 @@ export class TicketListComponent implements OnInit {
         ),
         description: String(record['description'] ?? record['descripcion'] ?? 'Sin descripción'),
         priority: String(record['priority'] ?? record['prioridad'] ?? 'Media'),
-        status: String(record['status'] ?? record['estado'] ?? 'Pendiente')
+        status: String(record['status'] ?? record['estado'] ?? 'Pendiente'),
+        assigned_to: (record['assigned_to'] as number | string | null | undefined) ?? null
       };
     });
   }

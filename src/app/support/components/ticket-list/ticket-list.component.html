@@ -132,28 +132,47 @@
             </td>
           </ng-container>
 
-          <!-- Columna: Acciones (Editar / Eliminar) -->
+          <!-- Columna: Acciones según el rol autenticado -->
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef class="header-actions">Acciones</th>
             <td mat-cell *matCellDef="let ticket" class="cell-actions">
-              <button
-                mat-icon-button
-                type="button"
-                class="action-btn action-btn--edit"
-                matTooltip="Editar estado o prioridad"
-                aria-label="Editar estado o prioridad"
-                (click)="openEditDialog(ticket)">
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button
-                mat-icon-button
-                type="button"
-                class="action-btn action-btn--delete"
-                matTooltip="Eliminar ticket"
-                aria-label="Eliminar ticket"
-                (click)="openDeleteConfirm(ticket)">
-                <mat-icon>delete</mat-icon>
-              </button>
+              @if (isAdmin) {
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="action-btn action-btn--edit"
+                  matTooltip="Editar estado o prioridad"
+                  aria-label="Editar estado o prioridad"
+                  (click)="openEditDialog(ticket)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="action-btn action-btn--delete"
+                  matTooltip="Eliminar ticket"
+                  aria-label="Eliminar ticket"
+                  (click)="openDeleteConfirm(ticket)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              } @else if (canAssignTickets) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="assign-btn"
+                  [disabled]="isTicketAssigning(ticket) || isTicketAssigned(ticket)"
+                  [attr.aria-label]="isTicketAssigned(ticket) ? 'Ticket asignado' : 'Asignarme ticket'"
+                  (click)="assignTicket(ticket)">
+                  <mat-icon>{{ isTicketAssigned(ticket) ? 'check' : 'person_add' }}</mat-icon>
+                  @if (isTicketAssigning(ticket)) {
+                    <span>Asignando...</span>
+                  } @else if (isTicketAssigned(ticket)) {
+                    <span>Asignado</span>
+                  } @else {
+                    <span>Asignarme</span>
+                  }
+                </button>
+              }
             </td>
           </ng-container>
 

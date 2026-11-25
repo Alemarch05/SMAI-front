@@ -95,4 +95,15 @@ describe('TicketService', () => {
     expect(req.request.method).toBe('DELETE');
     req.flush({ success: true });
   });
+
+  it('should consume POST http://127.0.0.1:8001/api/tickets/:id/assign without a body', () => {
+    service.assignTicket(101).subscribe((res) => {
+      expect(res.success).toBe(true);
+    });
+
+    const req = httpMock.expectOne('http://127.0.0.1:8001/api/tickets/101/assign');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeNull();
+    req.flush({ success: true });
+  });
 });

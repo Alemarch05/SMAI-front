@@ -10,6 +10,7 @@ export interface SupportTicket {
   description: string;
   priority: string;
   status: string;
+  assigned_to?: number | string | null;
   location?: string;
   category_id?: number;
   category_name?: string;
@@ -105,5 +106,13 @@ export class TicketService {
    */
   deleteTicket(id: number | string): Observable<TicketMutationResponse> {
     return this.http.delete<TicketMutationResponse>(`${this.apiUrl}/tickets/${id}`);
+  }
+
+  /**
+   * Asigna el ticket al usuario autenticado.
+   * Consume: POST http://127.0.0.1:8001/api/tickets/:id/assign
+   */
+  assignTicket(id: number | string): Observable<TicketMutationResponse> {
+    return this.http.post<TicketMutationResponse>(`${this.apiUrl}/tickets/${id}/assign`, null);
   }
 }

@@ -189,6 +189,14 @@
   }
 }
 
+.assign-btn {
+  border-radius: 10px !important;
+  border-color: #cbd5e1 !important;
+  color: #371777 !important;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 :host ::ng-deep {
   .status-chip.mdc-evolution-chip {
     height: 28px;

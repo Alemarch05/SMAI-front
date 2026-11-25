@@ -8,6 +8,7 @@ export interface AdminUser {
   name: string;
   email: string;
   role: string;
+  role_id?: number;
   status?: string;
   created_at?: string;
 }
@@ -15,15 +16,19 @@ export interface AdminUser {
 export interface CreateUserPayload {
   name: string;
   email: string;
+  password: string;
+  password_confirmation?: string;
   role: string;
-  password?: string;
+  role_id?: number;
 }
 
 export interface UpdateUserPayload {
   name: string;
   email: string;
   role: string;
+  role_id?: number;
   password?: string;
+  password_confirmation?: string;
 }
 
 export interface UsersApiResponse {
@@ -58,7 +63,7 @@ export class UserService {
   }
 
   /**
-   * Crea un nuevo usuario en el sistema.
+   * Crea un nuevo usuario en UserController (Laravel).
    * Consume: POST http://127.0.0.1:8000/api/users
    */
   createUser(payload: CreateUserPayload): Observable<UserMutationResponse> {
@@ -66,7 +71,7 @@ export class UserService {
   }
 
   /**
-   * Actualiza los datos de un usuario existente.
+   * Actualiza los datos de un usuario existente en UserController (Laravel).
    * Consume: PUT http://127.0.0.1:8000/api/users/:id
    */
   updateUser(id: number | string, payload: UpdateUserPayload): Observable<UserMutationResponse> {

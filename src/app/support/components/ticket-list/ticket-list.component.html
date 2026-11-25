@@ -7,9 +7,9 @@
           <mat-icon>confirmation_number</mat-icon>
         </div>
         <div>
-          <h1 class="panel-header__title">Tickets Abiertos</h1>
+          <h1 class="panel-header__title">Administración y Bandeja de Tickets</h1>
           <p class="panel-header__subtitle">
-            Gestión, edición de prioridad/estado y control de solicitudes en Soporte TI (Puerto 8001)
+            Creación, edición de estado/prioridad/descripción y control de solicitudes (Puerto 8001)
           </p>
         </div>
       </div>
@@ -30,10 +30,10 @@
       </div>
     </header>
 
-    <!-- Barra superior: Buscador dinámico + Actualizar -->
+    <!-- Barra superior: Buscador dinámico + Actualizar + Crear Ticket -->
     <div class="toolbar-row">
       <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
-        <mat-label>Buscar ticket abierto</mat-label>
+        <mat-label>Buscar ticket</mat-label>
         <mat-icon matPrefix>search</mat-icon>
         <input
           matInput
@@ -53,15 +53,27 @@
         }
       </mat-form-field>
 
-      <button
-        mat-stroked-button
-        type="button"
-        class="refresh-btn"
-        [disabled]="isLoading()"
-        (click)="loadOpenTickets()">
-        <mat-icon>refresh</mat-icon>
-        <span>Actualizar</span>
-      </button>
+      <div class="toolbar-actions">
+        <button
+          mat-stroked-button
+          type="button"
+          class="refresh-btn"
+          [disabled]="isLoading()"
+          (click)="loadOpenTickets()">
+          <mat-icon>refresh</mat-icon>
+          <span>Actualizar</span>
+        </button>
+
+        <button
+          mat-raised-button
+          color="primary"
+          type="button"
+          class="create-ticket-btn"
+          (click)="openCreateTicketDialog()">
+          <mat-icon>add_circle</mat-icon>
+          <span>Crear Ticket</span>
+        </button>
+      </div>
     </div>
 
     <!-- Estado de carga -->
@@ -141,8 +153,8 @@
                   mat-icon-button
                   type="button"
                   class="action-btn action-btn--edit"
-                  matTooltip="Editar estado o prioridad"
-                  aria-label="Editar estado o prioridad"
+                  matTooltip="Editar estado, prioridad o descripción"
+                  aria-label="Editar estado, prioridad o descripción"
                   (click)="openEditDialog(ticket)">
                   <mat-icon>edit</mat-icon>
                 </button>
@@ -230,7 +242,95 @@
   </mat-card>
 </section>
 
-<!-- Modal: Editar Prioridad y Estado del Ticket -->
+<!-- Modal: Crear Nuevo Ticket (POST http://127.0.0.1:8001/api/tickets) -->
+<ng-template #createTicketTemplate>
+  <h2 mat-dialog-title class="dialog-title">
+    <mat-icon>add_circle</mat-icon>
+    <span>Crear Nuevo Ticket</span>
+  </h2>
+
+  <mat-dialog-content class="dialog-body">
+    <form [formGroup]="createTicketForm" class="dialog-form" novalidate>
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Título / Incidencia</mat-label>
+        <mat-icon matPrefix>report_problem</mat-icon>
+        <input
+          matInput
+          formControlName="title"
+          placeholder="Ej. Fallo de conexión a red corporativa" />
+        @if (createTicketForm.controls.title.hasError('required') && createTicketForm.controls.title.touched) {
+          <mat-error>El título de la incidencia es obligatorio</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Ubicación</mat-label>
+        <mat-icon matPrefix>location_on</mat-icon>
+        <mat-select formControlName="location">
+          @for (loc of locationOptions; track loc) {
+            <mat-option [value]="loc">{{ loc }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Categoría</mat-label>
+        <mat-icon matPrefix>category</mat-icon>
+        <mat-select formControlName="category_id">
+          @for (cat of categoryOptions; track cat.id) {
+            <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Prioridad</mat-label>
+        <mat-icon matPrefix>flag</mat-icon>
+        <mat-select formControlName="priority">
+          @for (priorityOpt of priorityOptions; track priorityOpt) {
+            <mat-option [value]="priorityOpt">{{ priorityOpt }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Descripción del problema</mat-label>
+        <textarea
+          matInput
+          rows="3"
+          formControlName="description"
+          placeholder="Describa los detalles del requerimiento..."></textarea>
+        @if (createTicketForm.controls.description.hasError('required') && createTicketForm.controls.description.touched) {
+          <mat-error>La descripción es obligatoria</mat-error>
+        }
+      </mat-form-field>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="dialog-actions">
+    <button mat-button type="button" (click)="goToCreateTicketView()">
+      Ir al formulario completo
+    </button>
+    <button mat-button type="button" [disabled]="isCreating()" (click)="closeDialog()">
+      Cancelar
+    </button>
+    <button
+      mat-raised-button
+      color="primary"
+      type="button"
+      class="save-btn"
+      [disabled]="createTicketForm.invalid || isCreating()"
+      (click)="submitNewTicket()">
+      @if (isCreating()) {
+        <span>Creando...</span>
+      } @else {
+        <span>Crear Ticket</span>
+      }
+    </button>
+  </mat-dialog-actions>
+</ng-template>
+
+<!-- Modal: Editar Estado, Prioridad y Descripción del Ticket -->
 <ng-template #editTicketTemplate>
   <h2 mat-dialog-title class="dialog-title">
     <mat-icon>edit_note</mat-icon>
@@ -240,7 +340,6 @@
   <mat-dialog-content class="dialog-body">
     <div class="ticket-summary">
       <p><strong>Solicitante:</strong> {{ selectedTicket()?.user_name }}</p>
-      <p><strong>Descripción:</strong> {{ selectedTicket()?.description }}</p>
     </div>
 
     <form [formGroup]="editTicketForm" class="dialog-form" novalidate>
@@ -262,6 +361,18 @@
             <mat-option [value]="statusOpt">{{ statusOpt }}</mat-option>
           }
         </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Descripción</mat-label>
+        <textarea
+          matInput
+          rows="3"
+          formControlName="description"
+          placeholder="Actualice la descripción o notas del ticket..."></textarea>
+        @if (editTicketForm.controls.description.hasError('required') && editTicketForm.controls.description.touched) {
+          <mat-error>La descripción no puede estar vacía</mat-error>
+        }
       </mat-form-field>
     </form>
   </mat-dialog-content>

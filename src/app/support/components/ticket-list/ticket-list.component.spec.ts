@@ -54,10 +54,11 @@ describe('TicketListComponent', () => {
 
   it('should create a new ticket via POST http://127.0.0.1:8001/api/tickets and refresh table', () => {
     component.createTicketForm.setValue({
+      user_name: 'Carlos Ramírez',
       title: 'Fallo de VPN',
       location: 'Sistemas',
       category_id: 2,
-      priority: 'Alta Prioridad',
+      priority: 'ALTA',
       description: 'No permite autenticar el túnel VPN'
     });
 
@@ -65,6 +66,8 @@ describe('TicketListComponent', () => {
 
     const postReq = httpMock.expectOne('http://127.0.0.1:8001/api/tickets');
     expect(postReq.request.method).toBe('POST');
+    expect(postReq.request.body.user_name).toBe('Carlos Ramírez');
+    expect(postReq.request.body.priority).toBe('ALTA');
     postReq.flush({ success: true, message: 'Ticket creado' });
 
     const refreshReq = httpMock.expectOne('http://127.0.0.1:8001/api/tickets');

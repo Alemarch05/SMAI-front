@@ -252,6 +252,20 @@
   <mat-dialog-content class="dialog-body">
     <form [formGroup]="createTicketForm" class="dialog-form" novalidate>
       <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Nombre del usuario</mat-label>
+        <mat-icon matPrefix>person</mat-icon>
+        <input
+          matInput
+          formControlName="user_name"
+          placeholder="Ej. Ana Gómez" />
+        @if (createTicketForm.controls.user_name.hasError('required') && createTicketForm.controls.user_name.touched) {
+          <mat-error>El nombre del usuario es obligatorio</mat-error>
+        } @else if (createTicketForm.controls.user_name.hasError('minlength') && createTicketForm.controls.user_name.touched) {
+          <mat-error>Ingrese al menos 2 caracteres</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-field">
         <mat-label>Título / Incidencia</mat-label>
         <mat-icon matPrefix>report_problem</mat-icon>
         <input
@@ -287,8 +301,8 @@
         <mat-label>Prioridad</mat-label>
         <mat-icon matPrefix>flag</mat-icon>
         <mat-select formControlName="priority">
-          @for (priorityOpt of priorityOptions; track priorityOpt) {
-            <mat-option [value]="priorityOpt">{{ priorityOpt }}</mat-option>
+          @for (priorityOpt of priorityOptions; track priorityOpt.value) {
+            <mat-option [value]="priorityOpt.value">{{ priorityOpt.label }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
@@ -347,8 +361,8 @@
         <mat-label>Prioridad</mat-label>
         <mat-icon matPrefix>flag</mat-icon>
         <mat-select formControlName="priority">
-          @for (priorityOpt of priorityOptions; track priorityOpt) {
-            <mat-option [value]="priorityOpt">{{ priorityOpt }}</mat-option>
+          @for (priorityOpt of priorityOptions; track priorityOpt.value) {
+            <mat-option [value]="priorityOpt.value">{{ priorityOpt.label }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
@@ -357,8 +371,8 @@
         <mat-label>Estado (Status)</mat-label>
         <mat-icon matPrefix>sync_alt</mat-icon>
         <mat-select formControlName="status">
-          @for (statusOpt of statusOptions; track statusOpt) {
-            <mat-option [value]="statusOpt">{{ statusOpt }}</mat-option>
+          @for (statusOpt of statusOptions; track statusOpt.value) {
+            <mat-option [value]="statusOpt.value">{{ statusOpt.label }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
@@ -456,7 +470,7 @@
       class="save-btn"
       [disabled]="resolutionForm.invalid || resolvingTicketId() !== null"
       (click)="submitResolution()">
-      @if (isTicketResolving(ticketToResolve()!)) {
+      @if (isTicketResolving(ticketToResolve())) {
         <span>Guardando...</span>
       } @else {
         <span>Marcar como solucionado</span>

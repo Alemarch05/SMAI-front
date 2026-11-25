@@ -24,6 +24,7 @@ export interface SupportTicket {
 }
 
 export interface CreateSupportTicketPayload {
+  user_name: string;
   title: string;
   location: string;
   category_id: number;

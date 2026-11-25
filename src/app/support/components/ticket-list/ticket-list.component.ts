@@ -85,18 +85,18 @@ export class TicketListComponent implements OnInit {
     this.normalizeText(this.authService.getUserRole() ?? '').includes(role)
   );
 
-  readonly priorityOptions: readonly string[] = [
-    'Baja',
-    'Media',
-    'Alta Prioridad',
-    'Crítica'
+  readonly priorityOptions: readonly { value: string; label: string }[] = [
+    { value: 'BAJA', label: 'Baja' },
+    { value: 'MEDIA', label: 'Media' },
+    { value: 'ALTA', label: 'Alta Prioridad' }
   ];
 
-  readonly statusOptions: readonly string[] = [
-    'Pendiente',
-    'En Proceso',
-    'Resuelto',
-    'Completado'
+  readonly statusOptions: readonly { value: string; label: string }[] = [
+    { value: 'PENDIENTE_DIAGNOSTICO', label: 'Pendiente Diagnóstico' },
+    { value: 'ESCALADO', label: 'Escalado' },
+    { value: 'EN_PROCESO', label: 'En Proceso' },
+    { value: 'RESUELTO', label: 'Resuelto' },
+    { value: 'CERRADO', label: 'Cerrado' }
   ];
 
   readonly locationOptions: readonly string[] = [
@@ -139,17 +139,18 @@ export class TicketListComponent implements OnInit {
 
   // Formulario reactivo para Crear Ticket (POST http://127.0.0.1:8001/api/tickets)
   readonly createTicketForm = this.fb.group({
+    user_name: this.fb.nonNullable.control('', [Validators.required, Validators.minLength(2)]),
     title: this.fb.nonNullable.control('', [Validators.required, Validators.minLength(3)]),
     location: this.fb.nonNullable.control('Sistemas', [Validators.required]),
     category_id: this.fb.nonNullable.control(1, [Validators.required]),
-    priority: this.fb.nonNullable.control('Media', [Validators.required]),
+    priority: this.fb.nonNullable.control('MEDIA', [Validators.required]),
     description: this.fb.nonNullable.control('', [Validators.required, Validators.minLength(5)])
   });
 
   // Formulario reactivo para Editar estado, prioridad o descripción (PUT http://127.0.0.1:8001/api/tickets/:id)
   readonly editTicketForm = this.fb.group({
-    priority: this.fb.nonNullable.control('Media', [Validators.required]),
-    status: this.fb.nonNullable.control('Pendiente', [Validators.required]),
+    priority: this.fb.nonNullable.control('MEDIA', [Validators.required]),
+    status: this.fb.nonNullable.control('PENDIENTE_DIAGNOSTICO', [Validators.required]),
     description: this.fb.nonNullable.control('', [Validators.required, Validators.minLength(3)])
   });
 
@@ -235,10 +236,11 @@ export class TicketListComponent implements OnInit {
    */
   openCreateTicketDialog(): void {
     this.createTicketForm.reset({
+      user_name: '',
       title: '',
       location: 'Sistemas',
       category_id: 1,
-      priority: 'Media',
+      priority: 'MEDIA',
       description: ''
     });
 
@@ -273,6 +275,7 @@ export class TicketListComponent implements OnInit {
 
     const raw = this.createTicketForm.getRawValue();
     const payload: CreateSupportTicketPayload = {
+      user_name: raw.user_name.trim(),
       title: raw.title.trim(),
       location: raw.location,
       category_id: raw.category_id,
@@ -316,8 +319,8 @@ export class TicketListComponent implements OnInit {
 
     this.selectedTicket.set(ticket);
     this.editTicketForm.reset({
-      priority: ticket.priority || 'Media',
-      status: ticket.status || 'Pendiente',
+      priority: this.normalizePriorityValue(ticket.priority),
+      status: this.normalizeStatusValue(ticket.status),
       description: ticket.description || ''
     });
 
@@ -515,7 +518,10 @@ export class TicketListComponent implements OnInit {
     );
   }
 
-  isTicketResolving(ticket: SupportTicket): boolean {
+  isTicketResolving(ticket: SupportTicket | null | undefined): boolean {
+    if (!ticket) {
+      return false;
+    }
     return this.resolvingTicketId() === String(ticket.id);
   }
 
@@ -729,6 +735,34 @@ export class TicketListComponent implements OnInit {
         assigned_to: (record['assigned_to'] as number | string | null | undefined) ?? null
       };
     });
+  }
+
+  private normalizePriorityValue(rawPriority: string | null | undefined): string {
+    const value = this.normalizeText(rawPriority ?? '');
+    if (value.includes('alta') || value.includes('critica') || value.includes('high')) {
+      return 'ALTA';
+    }
+    if (value.includes('baja') || value.includes('low')) {
+      return 'BAJA';
+    }
+    return 'MEDIA';
+  }
+
+  private normalizeStatusValue(rawStatus: string | null | undefined): string {
+    const value = this.normalizeText(rawStatus ?? '');
+    if (value.includes('cerrado')) {
+      return 'CERRADO';
+    }
+    if (value.includes('resuelto') || value.includes('completado')) {
+      return 'RESUELTO';
+    }
+    if (value.includes('proceso')) {
+      return 'EN_PROCESO';
+    }
+    if (value.includes('escalado')) {
+      return 'ESCALADO';
+    }
+    return 'PENDIENTE_DIAGNOSTICO';
   }
 
   private normalizeText(text: string): string {

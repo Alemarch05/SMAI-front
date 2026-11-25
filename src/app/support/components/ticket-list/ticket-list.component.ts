@@ -28,6 +28,7 @@ import {
   ApiCollectionResponse,
   SupportTicket,
   TicketService,
+  TicketResolutionPayload,
   UpdateTicketPayload
 } from '../../services/ticket.service';
 
@@ -61,6 +62,8 @@ export class TicketListComponent implements OnInit {
   private readonly sort = viewChild(MatSort);
   private readonly editDialogTemplate = viewChild<TemplateRef<unknown>>('editTicketTemplate');
   private readonly deleteDialogTemplate = viewChild<TemplateRef<unknown>>('deleteTicketTemplate');
+  private readonly resolutionDialogTemplate =
+    viewChild<TemplateRef<unknown>>('ticketResolutionTemplate');
 
   private activeDialogRef: MatDialogRef<unknown> | null = null;
 
@@ -102,10 +105,12 @@ export class TicketListComponent implements OnInit {
   readonly isDeleting = signal<boolean>(false);
   readonly assigningTicketId = signal<string | null>(null);
   readonly assignedTicketIds = signal<Set<string>>(new Set());
+  readonly resolvingTicketId = signal<string | null>(null);
   readonly searchTerm = signal<string>('');
 
   readonly selectedTicket = signal<SupportTicket | null>(null);
   readonly ticketToDelete = signal<SupportTicket | null>(null);
+  readonly ticketToResolve = signal<SupportTicket | null>(null);
 
   readonly totalTickets = computed(() => this.tickets().length);
   readonly highPriorityCount = computed(
@@ -119,6 +124,15 @@ export class TicketListComponent implements OnInit {
   readonly editTicketForm = this.fb.group({
     priority: this.fb.nonNullable.control('Media', [Validators.required]),
     status: this.fb.nonNullable.control('Pendiente', [Validators.required])
+  });
+
+  readonly resolutionForm = this.fb.group({
+    cause: this.fb.nonNullable.control('', [
+      Validators.required,
+      Validators.pattern(/\S/),
+      Validators.maxLength(255)
+    ]),
+    solution: this.fb.nonNullable.control('', [Validators.required, Validators.pattern(/\S/)])
   });
 
   constructor() {
@@ -375,11 +389,100 @@ export class TicketListComponent implements OnInit {
     );
   }
 
+  isTicketResolved(ticket: SupportTicket): boolean {
+    const status = this.normalizeText(ticket.status);
+    return (
+      status.includes('resuelto') ||
+      status.includes('resolved') ||
+      status.includes('completado') ||
+      status.includes('completed') ||
+      status.includes('cerrado')
+    );
+  }
+
+  isTicketResolving(ticket: SupportTicket): boolean {
+    return this.resolvingTicketId() === String(ticket.id);
+  }
+
+  openResolutionDialog(ticket: SupportTicket): void {
+    if (!this.canAssignTickets || !this.isTicketAssigned(ticket) || this.isTicketResolved(ticket)) {
+      return;
+    }
+
+    this.ticketToResolve.set(ticket);
+    this.resolutionForm.reset({ cause: '', solution: '' });
+    const template = this.resolutionDialogTemplate();
+    if (template) {
+      this.activeDialogRef = this.dialog.open(template, {
+        width: '540px',
+        maxWidth: '95vw',
+        disableClose: true
+      });
+    }
+  }
+
+  submitResolution(): void {
+    const target = this.ticketToResolve();
+    if (
+      !this.canAssignTickets ||
+      !target ||
+      this.resolutionForm.invalid ||
+      this.resolvingTicketId() !== null
+    ) {
+      this.resolutionForm.markAllAsTouched();
+      return;
+    }
+
+    const formValue = this.resolutionForm.getRawValue();
+    const payload: TicketResolutionPayload = {
+      cause: formValue.cause.trim(),
+      solution: formValue.solution.trim()
+    };
+    if (!payload.cause || !payload.solution) {
+      this.resolutionForm.markAllAsTouched();
+      return;
+    }
+
+    this.resolvingTicketId.set(String(target.id));
+    this.ticketService
+      .resolveTicket(target.id, payload)
+      .pipe(
+        finalize(() => this.resolvingTicketId.set(null)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (response) => {
+          const updatedList = this.tickets().map((item) =>
+            item.id === target.id
+              ? { ...item, status: response.data?.status ?? 'RESUELTO' }
+              : item
+          );
+          this.tickets.set(updatedList);
+          this.dataSource.data = updatedList;
+          this.closeDialog();
+          this.snackBar.open(
+            response.message || `Ticket #${target.id} marcado como solucionado.`,
+            'Cerrar',
+            { duration: 3500 }
+          );
+        },
+        error: (err: HttpErrorResponse) => {
+          console.error('Error al registrar la solución del ticket:', err);
+          this.snackBar.open(
+            'No fue posible registrar la causa y solución del ticket.',
+            'Cerrar',
+            { duration: 4000 }
+          );
+        }
+      });
+  }
+
   closeDialog(): void {
     this.activeDialogRef?.close();
     this.activeDialogRef = null;
     this.selectedTicket.set(null);
     this.ticketToDelete.set(null);
+    this.ticketToResolve.set(null);
   }
 
   /**

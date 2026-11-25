@@ -156,22 +156,47 @@
                   <mat-icon>delete</mat-icon>
                 </button>
               } @else if (canAssignTickets) {
-                <button
-                  mat-stroked-button
-                  type="button"
-                  class="assign-btn"
-                  [disabled]="isTicketAssigning(ticket) || isTicketAssigned(ticket)"
-                  [attr.aria-label]="isTicketAssigned(ticket) ? 'Ticket asignado' : 'Asignarme ticket'"
-                  (click)="assignTicket(ticket)">
-                  <mat-icon>{{ isTicketAssigned(ticket) ? 'check' : 'person_add' }}</mat-icon>
-                  @if (isTicketAssigning(ticket)) {
-                    <span>Asignando...</span>
-                  } @else if (isTicketAssigned(ticket)) {
+                @if (isTicketAssigned(ticket)) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="assign-btn"
+                    disabled
+                    aria-label="Ticket asignado">
+                    <mat-icon>check</mat-icon>
                     <span>Asignado</span>
-                  } @else {
-                    <span>Asignarme</span>
+                  </button>
+                  @if (!isTicketResolved(ticket)) {
+                    <button
+                      mat-raised-button
+                      type="button"
+                      class="resolve-btn"
+                      [disabled]="isTicketResolving(ticket)"
+                      (click)="openResolutionDialog(ticket)">
+                      <mat-icon>task_alt</mat-icon>
+                      @if (isTicketResolving(ticket)) {
+                        <span>Guardando...</span>
+                      } @else {
+                        <span>Solucionar</span>
+                      }
+                    </button>
                   }
-                </button>
+                } @else {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="assign-btn"
+                    [disabled]="isTicketAssigning(ticket)"
+                    aria-label="Asignarme ticket"
+                    (click)="assignTicket(ticket)">
+                    <mat-icon>person_add</mat-icon>
+                    @if (isTicketAssigning(ticket)) {
+                      <span>Asignando...</span>
+                    } @else {
+                      <span>Asignarme</span>
+                    }
+                  </button>
+                }
               }
             </td>
           </ng-container>
@@ -256,6 +281,74 @@
         <span>Guardando...</span>
       } @else {
         <span>Guardar Cambios</span>
+      }
+    </button>
+  </mat-dialog-actions>
+</ng-template>
+
+<!-- Modal: Causa y solución del ticket -->
+<ng-template #ticketResolutionTemplate>
+  <h2 mat-dialog-title class="dialog-title">
+    <mat-icon>task_alt</mat-icon>
+    <span>Solucionar Ticket #{{ ticketToResolve()?.id }}</span>
+  </h2>
+
+  <mat-dialog-content class="dialog-body">
+    <div class="ticket-summary">
+      <p><strong>Solicitante:</strong> {{ ticketToResolve()?.user_name }}</p>
+      <p><strong>Descripción:</strong> {{ ticketToResolve()?.description }}</p>
+    </div>
+
+    <form [formGroup]="resolutionForm" class="dialog-form" novalidate>
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Causa del problema</mat-label>
+        <textarea
+          matInput
+          formControlName="cause"
+          rows="3"
+          maxlength="255"
+          placeholder="Describe qué ocasionó el problema"></textarea>
+        @if (resolutionForm.controls.cause.hasError('required') || resolutionForm.controls.cause.hasError('pattern')) {
+          <mat-error>Indica la causa del problema.</mat-error>
+        }
+        @if (resolutionForm.controls.cause.hasError('maxlength')) {
+          <mat-error>La causa no puede superar los 255 caracteres.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-field">
+        <mat-label>Solución aplicada</mat-label>
+        <textarea
+          matInput
+          formControlName="solution"
+          rows="4"
+          placeholder="Describe cómo se solucionó el problema"></textarea>
+        @if (resolutionForm.controls.solution.hasError('required') || resolutionForm.controls.solution.hasError('pattern')) {
+          <mat-error>Indica la solución aplicada.</mat-error>
+        }
+      </mat-form-field>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="dialog-actions">
+    <button
+      mat-button
+      type="button"
+      [disabled]="resolvingTicketId() !== null"
+      (click)="closeDialog()">
+      Cancelar
+    </button>
+    <button
+      mat-raised-button
+      color="primary"
+      type="button"
+      class="save-btn"
+      [disabled]="resolutionForm.invalid || resolvingTicketId() !== null"
+      (click)="submitResolution()">
+      @if (isTicketResolving(ticketToResolve()!)) {
+        <span>Guardando...</span>
+      } @else {
+        <span>Marcar como solucionado</span>
       }
     </button>
   </mat-dialog-actions>

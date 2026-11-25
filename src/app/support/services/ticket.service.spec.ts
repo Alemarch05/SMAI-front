@@ -5,6 +5,7 @@ import {
   SupportTicket,
   TicketHistoryItem,
   TicketService,
+  TicketResolutionPayload,
   UpdateTicketPayload
 } from './ticket.service';
 
@@ -104,6 +105,22 @@ describe('TicketService', () => {
     const req = httpMock.expectOne('http://127.0.0.1:8001/api/tickets/101/assign');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toBeNull();
+    req.flush({ success: true });
+  });
+
+  it('should consume PATCH http://127.0.0.1:8001/api/tickets/:id/resolution', () => {
+    const payload: TicketResolutionPayload = {
+      cause: 'Fuente de alimentación defectuosa',
+      solution: 'Se reemplazó la fuente y se verificó el encendido.'
+    };
+
+    service.resolveTicket(101, payload).subscribe((res) => {
+      expect(res.success).toBe(true);
+    });
+
+    const req = httpMock.expectOne('http://127.0.0.1:8001/api/tickets/101/resolution');
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual(payload);
     req.flush({ success: true });
   });
 });

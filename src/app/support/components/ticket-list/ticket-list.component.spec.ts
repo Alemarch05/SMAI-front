@@ -135,5 +135,33 @@ describe('TicketListComponent', () => {
     expect(component.tickets()[0].assigned_to).toBe(5);
     expect(component.tickets()[0].status).toBe('ESCALADO');
     expect(component.isTicketAssigned(component.tickets()[0])).toBe(true);
+
+    component.openResolutionDialog(component.tickets()[0]);
+    fixture.detectChanges();
+    expect(document.body.textContent).toContain('Causa del problema');
+    expect(component.resolutionForm.invalid).toBe(true);
+
+    component.resolutionForm.setValue({
+      cause: 'Fuente de alimentación defectuosa',
+      solution: 'Se reemplazó la fuente y se verificó el encendido.'
+    });
+    component.submitResolution();
+
+    const resolutionRequest = httpMock.expectOne(
+      'http://127.0.0.1:8001/api/tickets/1/resolution'
+    );
+    expect(resolutionRequest.request.method).toBe('PATCH');
+    expect(resolutionRequest.request.body).toEqual({
+      cause: 'Fuente de alimentación defectuosa',
+      solution: 'Se reemplazó la fuente y se verificó el encendido.'
+    });
+    resolutionRequest.flush({
+      success: true,
+      message: 'Ticket solucionado correctamente',
+      data: { id: 1, status: 'RESUELTO' }
+    });
+
+    expect(component.tickets()[0].status).toBe('RESUELTO');
+    expect(component.ticketToResolve()).toBeNull();
   });
 });

@@ -189,12 +189,22 @@
   }
 }
 
-.assign-btn {
+.assign-btn,
+.resolve-btn {
   border-radius: 10px !important;
-  border-color: #cbd5e1 !important;
-  color: #371777 !important;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.assign-btn {
+  border-color: #cbd5e1 !important;
+  color: #371777 !important;
+}
+
+.resolve-btn {
+  margin-left: 8px;
+  background: #16835d !important;
+  color: #ffffff !important;
 }
 
 :host ::ng-deep {

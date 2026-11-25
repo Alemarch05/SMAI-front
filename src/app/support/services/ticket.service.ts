@@ -28,10 +28,21 @@ export interface UpdateTicketPayload {
   description?: string;
 }
 
+export interface TicketResolutionPayload {
+  cause: string;
+  solution: string;
+}
+
 export interface TicketMutationResponse {
   success?: boolean;
   message?: string;
   data?: SupportTicket;
+}
+
+export interface TicketResolutionResponse {
+  success?: boolean;
+  message?: string;
+  data?: Partial<SupportTicket>;
 }
 
 export interface TicketHistoryItem {
@@ -114,5 +125,19 @@ export class TicketService {
    */
   assignTicket(id: number | string): Observable<TicketMutationResponse> {
     return this.http.post<TicketMutationResponse>(`${this.apiUrl}/tickets/${id}/assign`, null);
+  }
+
+  /**
+   * Guarda la causa y solución y marca el ticket como resuelto.
+   * Consume: PATCH http://127.0.0.1:8001/api/tickets/:id/resolution
+   */
+  resolveTicket(
+    id: number | string,
+    payload: TicketResolutionPayload
+  ): Observable<TicketResolutionResponse> {
+    return this.http.patch<TicketResolutionResponse>(
+      `${this.apiUrl}/tickets/${id}/resolution`,
+      payload
+    );
   }
 }

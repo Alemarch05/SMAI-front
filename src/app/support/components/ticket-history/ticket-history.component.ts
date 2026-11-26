@@ -22,6 +22,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { MaterialModule } from '../../../shared/material.module';
+import { AuthService } from '../../../core/services/auth/auth.service';
 
 import {
   ApiCollectionResponse,
@@ -51,6 +52,7 @@ export class TicketHistoryComponent implements OnInit {
   private readonly ticketService = inject(TicketService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly authService = inject(AuthService);
 
   private readonly paginator = viewChild(MatPaginator);
   private readonly sort = viewChild(MatSort);
@@ -99,32 +101,45 @@ export class TicketHistoryComponent implements OnInit {
   /**
    * Consume GET http://127.0.0.1:8001/api/tickets/history y puebla la tabla.
    */
-  loadHistory(): void {
-    this.isLoading.set(true);
+loadHistory(): void {
+  this.isLoading.set(true);
 
-    this.ticketService
-      .getTicketHistory()
-      .pipe(
-        finalize(() => this.isLoading.set(false)),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (response) => {
-          const normalized = this.extractHistoryItems(response);
-          this.historyItems.set(normalized);
-          this.dataSource.data = normalized;
-        },
-        error: (err: HttpErrorResponse) => {
-          console.error('Error al cargar el historial de tickets:', err);
-          this.snackBar.open(
-            'No fue posible obtener el historial de tickets. Intente nuevamente.',
-            'Cerrar',
-            { duration: 4500 }
-          );
-        }
-      });
+  const currentUser = this.authService.getCurrentUser();
+  const role = (currentUser?.role ?? this.authService.getUserRole() ?? '').toLowerCase();
+
+  const filters: { mine?: boolean; assigned_to?: number | string; status: string } = {
+    status: 'RESUELTO,CERRADO'
+  };
+
+  if (role === 'cliente') {
+    filters.mine = true;
+  } else if (role === 'soporte' && currentUser?.id !== undefined) {
+    filters.assigned_to = currentUser.id;
   }
+  // Si role === 'admin', no se agrega mine ni assigned_to y trae todos los resueltos
 
+  this.ticketService
+    .getTicketHistory(filters)
+    .pipe(
+      finalize(() => this.isLoading.set(false)),
+      takeUntilDestroyed(this.destroyRef)
+    )
+    .subscribe({
+      next: (response) => {
+        const normalized = this.extractHistoryItems(response);
+        this.historyItems.set(normalized);
+        this.dataSource.data = normalized;
+      },
+      error: (err: HttpErrorResponse) => {
+        console.error('Error al cargar el historial de tickets:', err);
+        this.snackBar.open(
+          'No fue posible obtener el historial de tickets. Intente nuevamente.',
+          'Cerrar',
+          { duration: 4500 }
+        );
+      }
+    });
+}
   applyFilter(event: Event): void {
     const value = (event.target as HTMLInputElement).value ?? '';
     this.searchTerm.set(value);
@@ -221,25 +236,35 @@ export class TicketHistoryComponent implements OnInit {
 
     return rawList.map((entry, idx) => {
       const record = (entry ?? {}) as Record<string, unknown>;
+
+      const title = record['title'] ? String(record['title']) : '';
+      const desc = record['description'] ?? record['descripcion'];
+      const fullDescription = title && desc
+        ? `${title}: ${desc}`
+        : String(title || desc || 'Sin descripción registrada');
+
+      const cause = record['cause'] ? `Causa: ${record['cause']}` : '';
+      const solution = record['solution'] ? `Solución: ${record['solution']}` : '';
+      const resolutionText = [cause, solution].filter(Boolean).join(' | ');
+
       const rawDetails =
-        record['detalles'] ??
-        record['details'] ??
-        record['resolution'] ??
+        resolutionText ||
+        record['detalles'] ||
+        record['details'] ||
+        record['resolution'] ||
         record['level1_diagnostic'];
 
       const formattedDetails =
         typeof rawDetails === 'object' && rawDetails !== null
           ? JSON.stringify(rawDetails)
-          : String(rawDetails ?? 'Sin observaciones adicionales');
+          : String(rawDetails || 'Sin observaciones adicionales');
 
       return {
         id: (record['id'] as number | string) ?? idx + 1,
-        fecha: String(record['fecha'] ?? record['updated_at'] ?? record['created_at'] ?? ''),
-        descripcion: String(
-          record['descripcion'] ?? record['description'] ?? 'Sin descripción registrada'
-        ),
+        fecha: String(record['updated_at'] ?? record['fecha'] ?? record['created_at'] ?? ''),
+        descripcion: fullDescription,
         detalles: formattedDetails,
-        status: String(record['status'] ?? record['estado'] ?? 'Completado')
+        status: String(record['status'] ?? record['estado'] ?? 'RESUELTO')
       };
     });
   }

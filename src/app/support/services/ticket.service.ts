@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+
 
 export interface SupportTicket {
   id: number | string;
@@ -152,9 +153,24 @@ export class TicketService {
    * Obtiene el historial completo de tickets atendidos/cerrados.
    * Consume: GET http://127.0.0.1:8001/api/tickets/history
    */
-  getTicketHistory(): Observable<ApiCollectionResponse<TicketHistoryItem> | TicketHistoryItem[]> {
+  getTicketHistory(filters: {
+    mine?: boolean;
+    assigned_to?: number | string;
+    status?: string;
+  } = {}): Observable<ApiCollectionResponse<TicketHistoryItem> | TicketHistoryItem[]> {
+    let params = new HttpParams().set('status', filters.status ?? 'RESUELTO,CERRADO');
+
+    if (filters.mine) {
+      params = params.set('mine', '1');
+    }
+
+    if (filters.assigned_to !== undefined && filters.assigned_to !== null && filters.assigned_to !== '') {
+      params = params.set('assigned_to', String(filters.assigned_to));
+    }
+
     return this.http.get<ApiCollectionResponse<TicketHistoryItem> | TicketHistoryItem[]>(
-      `${this.apiUrl}/tickets/history`
+      `${this.apiUrl}/tickets`,
+      { params }
     );
   }
 

@@ -89,6 +89,27 @@ export class AuthService {
     }
   }
 
+  getCurrentUser(): { id?: number | string; name?: string; email?: string; role?: string } | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+      return null;
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(storedUser);
+      if (typeof parsed === 'object' && parsed !== null) {
+        return parsed as { id?: number | string; name?: string; email?: string; role?: string };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   logout(): void {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem('access_token');

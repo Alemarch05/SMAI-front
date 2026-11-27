@@ -66,10 +66,13 @@ export class TicketListComponent implements OnInit {
   private readonly createDialogTemplate = viewChild<TemplateRef<unknown>>('createTicketTemplate');
   private readonly editDialogTemplate = viewChild<TemplateRef<unknown>>('editTicketTemplate');
   private readonly deleteDialogTemplate = viewChild<TemplateRef<unknown>>('deleteTicketTemplate');
+  private readonly ticketDetailsDialogTemplate =
+    viewChild<TemplateRef<unknown>>('ticketDetailsTemplate');
   private readonly resolutionDialogTemplate =
     viewChild<TemplateRef<unknown>>('ticketResolutionTemplate');
 
   private activeDialogRef: MatDialogRef<unknown> | null = null;
+  private detailsDialogRef: MatDialogRef<unknown> | null = null;
 
   readonly displayedColumns: readonly string[] = [
     'id',
@@ -123,9 +126,11 @@ export class TicketListComponent implements OnInit {
   readonly assigningTicketId = signal<string | null>(null);
   readonly assignedTicketIds = signal<Set<string>>(new Set());
   readonly resolvingTicketId = signal<string | null>(null);
+  readonly isLoadingTicketDetails = signal<boolean>(false);
   readonly searchTerm = signal<string>('');
 
   readonly selectedTicket = signal<SupportTicket | null>(null);
+  readonly ticketDetails = signal<SupportTicket | null>(null);
   readonly ticketToDelete = signal<SupportTicket | null>(null);
   readonly ticketToResolve = signal<SupportTicket | null>(null);
 
@@ -160,8 +165,52 @@ export class TicketListComponent implements OnInit {
       Validators.pattern(/\S/),
       Validators.maxLength(255)
     ]),
-    solution: this.fb.nonNullable.control('', [Validators.required, Validators.pattern(/\S/)])
+    solution: this.fb.nonNullable.control('', [Validators.required, Validators.pattern(/\S/)]),
+    standard_solution: this.fb.nonNullable.control('', [Validators.maxLength(255)])
   });
+
+  private readonly standardSolutionsByCategory: Readonly<Record<string, readonly string[]>> = {
+    'Fallo de Encendido / Hardware': [
+      'Revisé las conexiones eléctricas, la regleta y el cable de poder.',
+      'Mantuve presionado el botón de encendido 15 segundos para descargar la estática.',
+      'Limpié y reinserté las memorias RAM y probé con otra fuente de poder.'
+    ],
+    'Hardware (Personalizado)': [
+      'Inspeccioné físicamente el componente reportado para descartar daños visibles.',
+      'Ajusté los conectores internos y periféricos vinculados al fallo.',
+      'Realicé pruebas aisladas y reemplacé la pieza defectuosa.'
+    ],
+    'Fallo de Red o Conexión': [
+      'Verifiqué que el modo avión estuviera apagado y revisé el cable Ethernet.',
+      'Ejecuté ipconfig /release, ipconfig /renew y ipconfig /flushdns en consola.',
+      'Actualicé el controlador de la tarjeta de red y probé la salida a internet.'
+    ],
+    'Red (Personalizado)': [
+      'Revisé la configuración de IP estática/DHCP y la puerta de enlace del equipo.',
+      'Comprobé el estado del puerto en el switch y el punto de acceso cercano.',
+      'Restablecí los adaptadores de red y validé los permisos de conexión local.'
+    ],
+    'Problema de Software / Aplicaciones': [
+      'Forcé el cierre de la aplicación desde el Administrador de tareas y la reinicié.',
+      'Limpié la caché y los archivos temporales del programa afectado.',
+      'Ejecuté una reparación de la instalación y validé los permisos de usuario.'
+    ],
+    'Software (Personalizado)': [
+      'Revisé el visor de eventos para identificar el error exacto de la aplicación.',
+      'Verifiqué e instalé las librerías y dependencias faltantes del programa.',
+      'Reinstalé la versión compatible del software y ajusté su configuración.'
+    ],
+    'Lentitud del Equipo o Sistema': [
+      'Cerré las aplicaciones pesadas en segundo plano y liberé espacio en el disco C:.',
+      'Deshabilité los programas innecesarios del inicio automático de Windows.',
+      'Ejecuté sfc /scannow y DISM para reparar archivos corruptos del sistema.'
+    ],
+    'Lentitud (Personalizado)': [
+      'Monitoreé el consumo de CPU, RAM y disco durante la tarea específica.',
+      'Detuve los procesos que generaban cuello de botella en el rendimiento.',
+      'Realicé limpieza de temporales y verifiqué el estado de salud del disco.'
+    ]
+  };
 
   constructor() {
     effect(() => {
@@ -220,6 +269,109 @@ export class TicketListComponent implements OnInit {
     if (this.dataSource.paginator) {
       this.dataSource.paginator.firstPage();
     }
+  }
+
+  openTicketDetails(ticket: SupportTicket): void {
+    const template = this.ticketDetailsDialogTemplate();
+    if (!template || this.isLoadingTicketDetails()) {
+      return;
+    }
+
+    this.ticketDetails.set(ticket);
+    this.isLoadingTicketDetails.set(true);
+    this.detailsDialogRef = this.dialog.open(template, {
+      width: '980px',
+      maxWidth: '96vw',
+      maxHeight: '94vh',
+      minHeight: '72vh',
+      panelClass: 'ticket-detail-dialog',
+      disableClose: true
+    });
+
+    this.ticketService
+      .getTicketById(ticket.id)
+      .pipe(
+        finalize(() => this.isLoadingTicketDetails.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (response) => {
+          if (!response.data) {
+            this.closeTicketDetails();
+            this.snackBar.open(
+              response.message || 'El servicio no devolvió el detalle del ticket.',
+              'Cerrar',
+              { duration: 4500 }
+            );
+            return;
+          }
+
+          this.ticketDetails.set({
+            ...ticket,
+            ...response.data,
+            category_name:
+              response.data.category?.name ??
+              response.data.category_name ??
+              ticket.category_name
+          });
+        },
+        error: (err: HttpErrorResponse) => {
+          console.error('Error al obtener el detalle del ticket:', err);
+          this.closeTicketDetails();
+          this.snackBar.open(
+            this.extractBackendError(err, 'No fue posible cargar el detalle del ticket.'),
+            'Cerrar',
+            { duration: 5000 }
+          );
+        }
+      });
+  }
+
+  closeTicketDetails(): void {
+    this.detailsDialogRef?.close();
+    this.detailsDialogRef = null;
+    this.ticketDetails.set(null);
+  }
+
+  getStandardSolutions(ticket: SupportTicket | null): readonly string[] {
+    const rawCategory = ticket?.category?.name ?? ticket?.category_name ?? '';
+    const category = this.normalizeText(rawCategory);
+    const isCustom = category.includes('personalizado');
+
+    if (category.includes('hardware') || category.includes('encendido')) {
+      return this.standardSolutionsByCategory[
+        isCustom ? 'Hardware (Personalizado)' : 'Fallo de Encendido / Hardware'
+      ];
+    }
+    if (category.includes('red') || category.includes('conexion')) {
+      return this.standardSolutionsByCategory[
+        isCustom ? 'Red (Personalizado)' : 'Fallo de Red o Conexión'
+      ];
+    }
+    if (category.includes('software') || category.includes('aplicacion')) {
+      return this.standardSolutionsByCategory[
+        isCustom ? 'Software (Personalizado)' : 'Problema de Software / Aplicaciones'
+      ];
+    }
+    if (category.includes('lentitud')) {
+      return this.standardSolutionsByCategory[
+        isCustom ? 'Lentitud (Personalizado)' : 'Lentitud del Equipo o Sistema'
+      ];
+    }
+    return [];
+  }
+
+  selectStandardSolution(solution: string): void {
+    if (solution) {
+      this.resolutionForm.controls.solution.setValue(solution);
+    }
+  }
+
+  formatDiagnostic(diagnostic: unknown): string {
+    if (typeof diagnostic === 'string') {
+      return diagnostic;
+    }
+    return JSON.stringify(diagnostic, null, 2);
   }
 
   clearSearch(): void {
@@ -468,17 +620,20 @@ export class TicketListComponent implements OnInit {
       .subscribe({
         next: (response) => {
           this.assignedTicketIds.update((ids) => new Set(ids).add(String(ticket.id)));
+          const updatedTicket: SupportTicket = {
+            ...ticket,
+            ...response.data,
+            assigned_to: response.data?.assigned_to ?? ticket.assigned_to,
+            status: response.data?.status ?? ticket.status
+          };
           const updatedList = this.tickets().map((item) =>
-            item.id === ticket.id
-              ? {
-                  ...item,
-                  assigned_to: response.data?.assigned_to ?? item.assigned_to,
-                  status: response.data?.status ?? item.status
-                }
-              : item
+            item.id === ticket.id ? { ...item, ...updatedTicket } : item
           );
           this.tickets.set(updatedList);
           this.dataSource.data = updatedList;
+          this.ticketDetails.update((details) =>
+            details?.id === ticket.id ? { ...details, ...updatedTicket } : details
+          );
           this.snackBar.open(
             response?.message || `Ticket #${ticket.id} asignado correctamente.`,
             'Cerrar',
@@ -531,7 +686,7 @@ export class TicketListComponent implements OnInit {
     }
 
     this.ticketToResolve.set(ticket);
-    this.resolutionForm.reset({ cause: '', solution: '' });
+    this.resolutionForm.reset({ cause: '', solution: '', standard_solution: '' });
     const template = this.resolutionDialogTemplate();
     if (template) {
       this.activeDialogRef = this.dialog.open(template, {
@@ -559,6 +714,9 @@ export class TicketListComponent implements OnInit {
       cause: formValue.cause.trim(),
       solution: formValue.solution.trim()
     };
+    if (formValue.standard_solution.trim()) {
+      payload.standard_solution = formValue.standard_solution.trim();
+    }
     if (!payload.cause || !payload.solution) {
       this.resolutionForm.markAllAsTouched();
       return;
@@ -575,11 +733,29 @@ export class TicketListComponent implements OnInit {
         next: (response) => {
           const updatedList = this.tickets().map((item) =>
             item.id === target.id
-              ? { ...item, status: response.data?.status ?? 'RESUELTO' }
+              ? {
+                  ...item,
+                  cause: payload.cause,
+                  solution: payload.solution,
+                  standard_solution: payload.standard_solution ?? null,
+                  status: response.data?.status ?? 'RESUELTO'
+                }
               : item
           );
           this.tickets.set(updatedList);
           this.dataSource.data = updatedList;
+          this.ticketDetails.update((details) =>
+            details?.id === target.id
+              ? {
+                  ...details,
+                  ...response.data,
+                  cause: payload.cause,
+                  solution: payload.solution,
+                  standard_solution: payload.standard_solution ?? null,
+                  status: response.data?.status ?? 'RESUELTO'
+                }
+              : details
+          );
           this.closeDialog();
           this.snackBar.open(
             response.message || `Ticket #${target.id} marcado como solucionado.`,
@@ -732,7 +908,14 @@ export class TicketListComponent implements OnInit {
         ),
         priority: String(record['priority'] ?? record['prioridad'] ?? 'Media'),
         status: String(record['status'] ?? record['estado'] ?? 'Pendiente'),
-        assigned_to: (record['assigned_to'] as number | string | null | undefined) ?? null
+        assigned_to: (record['assigned_to'] as number | string | null | undefined) ?? null,
+        category_id: record['category_id'] as number | string | undefined,
+        category_name: String(
+          (record['category'] as Record<string, unknown> | undefined)?.['name'] ??
+            record['category_name'] ??
+            ''
+        ),
+        category: record['category'] as SupportTicket['category']
       };
     });
   }

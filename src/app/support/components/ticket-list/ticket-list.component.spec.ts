@@ -109,7 +109,7 @@ describe('TicketListComponent', () => {
     expect(component.tickets().length).toBe(1);
   });
 
-  it('shows assignment instead of admin actions for support and updates the ticket after assignment', () => {
+  it('loads ticket details, assigns from the detail view and resolves with same-category standard solution', () => {
     fixture.destroy();
     localStorage.setItem('user', JSON.stringify({ role: 'soporte' }));
     fixture = TestBed.createComponent(TicketListComponent);
@@ -128,12 +128,41 @@ describe('TicketListComponent', () => {
     ]);
     fixture.detectChanges();
 
-    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
-    expect(buttons.some((button) => button.textContent?.includes('Asignarme'))).toBe(true);
     expect(fixture.nativeElement.querySelector('.action-btn--edit')).toBeNull();
     expect(fixture.nativeElement.querySelector('.action-btn--delete')).toBeNull();
 
-    component.assignTicket(component.tickets()[0]);
+    (fixture.nativeElement.querySelector('tr.ticket-row') as HTMLTableRowElement).click();
+    const detailRequest = httpMock.expectOne('http://127.0.0.1:8001/api/tickets/1');
+    expect(detailRequest.request.method).toBe('GET');
+    detailRequest.flush({
+      success: true,
+      data: {
+        id: 1,
+        user_id: 4,
+        assigned_to: null,
+        category_id: 1,
+        location: 'Administración',
+        title: 'Se apaga repentinamente',
+        description: 'El equipo se apaga de la nada',
+        status: 'PENDIENTE_DIAGNOSTICO',
+        priority: 'MEDIA',
+        user_name: 'Ana Gómez',
+        created_at: '2026-11-07T09:00:00Z',
+        category: { id: 1, name: 'Fallo de Encendido / Hardware' },
+        logs: [{ id: 1, action: 'CREACION', comment: 'Ticket creado' }]
+      }
+    });
+    fixture.detectChanges();
+
+    expect(document.body.textContent).toContain('Se apaga repentinamente');
+    expect(document.body.textContent).toContain('Asignarme ticket');
+    const standardSolutions = component.getStandardSolutions(component.ticketDetails());
+    expect(standardSolutions.length).toBe(3);
+    expect(standardSolutions[0]).toBe(
+      'Revisé las conexiones eléctricas, la regleta y el cable de poder.'
+    );
+
+    component.assignTicket(component.ticketDetails()!);
     const request = httpMock.expectOne('http://127.0.0.1:8001/api/tickets/1/assign');
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toBeNull();
@@ -146,15 +175,21 @@ describe('TicketListComponent', () => {
     expect(component.tickets()[0].assigned_to).toBe(5);
     expect(component.tickets()[0].status).toBe('ESCALADO');
     expect(component.isTicketAssigned(component.tickets()[0])).toBe(true);
+    expect(component.isTicketAssigned(component.ticketDetails()!)).toBe(true);
 
-    component.openResolutionDialog(component.tickets()[0]);
+    component.openResolutionDialog(component.ticketDetails()!);
     fixture.detectChanges();
     expect(document.body.textContent).toContain('Causa del problema');
+    expect(document.body.textContent).toContain('Solución estándar de la categoría');
     expect(component.resolutionForm.invalid).toBe(true);
 
-    component.resolutionForm.setValue({
+    component.resolutionForm.patchValue({
+      standard_solution: standardSolutions[1]
+    });
+    component.selectStandardSolution(standardSolutions[1]);
+    component.resolutionForm.patchValue({
       cause: 'Fuente de alimentación defectuosa',
-      solution: 'Se reemplazó la fuente y se verificó el encendido.'
+      solution: standardSolutions[1]
     });
     component.submitResolution();
 
@@ -164,7 +199,8 @@ describe('TicketListComponent', () => {
     expect(resolutionRequest.request.method).toBe('PATCH');
     expect(resolutionRequest.request.body).toEqual({
       cause: 'Fuente de alimentación defectuosa',
-      solution: 'Se reemplazó la fuente y se verificó el encendido.'
+      solution: standardSolutions[1],
+      standard_solution: standardSolutions[1]
     });
     resolutionRequest.flush({
       success: true,
@@ -174,5 +210,7 @@ describe('TicketListComponent', () => {
 
     expect(component.tickets()[0].status).toBe('RESUELTO');
     expect(component.ticketToResolve()).toBeNull();
+    expect(component.ticketDetails()?.status).toBe('RESUELTO');
+    component.closeTicketDetails();
   });
 });

@@ -155,7 +155,7 @@
                   class="action-btn action-btn--edit"
                   matTooltip="Editar estado, prioridad o descripción"
                   aria-label="Editar estado, prioridad o descripción"
-                  (click)="openEditDialog(ticket)">
+                  (click)="$event.stopPropagation(); openEditDialog(ticket)">
                   <mat-icon>edit</mat-icon>
                 </button>
                 <button
@@ -164,57 +164,24 @@
                   class="action-btn action-btn--delete"
                   matTooltip="Eliminar ticket"
                   aria-label="Eliminar ticket"
-                  (click)="openDeleteConfirm(ticket)">
+                  (click)="$event.stopPropagation(); openDeleteConfirm(ticket)">
                   <mat-icon>delete</mat-icon>
                 </button>
-              } @else if (canAssignTickets) {
-                @if (isTicketAssigned(ticket)) {
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    class="assign-btn"
-                    disabled
-                    aria-label="Ticket asignado">
-                    <mat-icon>check</mat-icon>
-                    <span>Asignado</span>
-                  </button>
-                  @if (!isTicketResolved(ticket)) {
-                    <button
-                      mat-raised-button
-                      type="button"
-                      class="resolve-btn"
-                      [disabled]="isTicketResolving(ticket)"
-                      (click)="openResolutionDialog(ticket)">
-                      <mat-icon>task_alt</mat-icon>
-                      @if (isTicketResolving(ticket)) {
-                        <span>Guardando...</span>
-                      } @else {
-                        <span>Solucionar</span>
-                      }
-                    </button>
-                  }
-                } @else {
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    class="assign-btn"
-                    [disabled]="isTicketAssigning(ticket)"
-                    aria-label="Asignarme ticket"
-                    (click)="assignTicket(ticket)">
-                    <mat-icon>person_add</mat-icon>
-                    @if (isTicketAssigning(ticket)) {
-                      <span>Asignando...</span>
-                    } @else {
-                      <span>Asignarme</span>
-                    }
-                  </button>
-                }
               }
             </td>
           </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns" class="ticket-row"></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: displayedColumns"
+            class="ticket-row"
+            tabindex="0"
+            [attr.aria-label]="'Ver detalle del ticket #' + row.id"
+            (click)="openTicketDetails(row)"
+            (keydown.enter)="openTicketDetails(row)"
+            (keydown.space)="openTicketDetails(row); $event.preventDefault()">
+          </tr>
 
           <!-- Fila sin resultados -->
           <tr class="mat-row" *matNoDataRow>
@@ -344,6 +311,219 @@
   </mat-dialog-actions>
 </ng-template>
 
+<!-- Modal: Detalle completo del ticket -->
+<ng-template #ticketDetailsTemplate>
+  <h2 mat-dialog-title class="ticket-detail-dialog__title">
+    <span class="ticket-detail-dialog__title-icon"><mat-icon>confirmation_number</mat-icon></span>
+    <span>
+      <small>GESTIÓN DE SOPORTE</small>
+      <strong>Detalle del ticket #{{ ticketDetails()?.id }}</strong>
+    </span>
+  </h2>
+
+  <mat-dialog-content class="dialog-body ticket-detail">
+    @if (isLoadingTicketDetails()) {
+      <div class="state-box" aria-live="polite">
+        <mat-spinner diameter="38"></mat-spinner>
+        <p>Cargando detalle del ticket...</p>
+      </div>
+    } @else if (ticketDetails(); as ticket) {
+      <mat-card class="ticket-detail-dialog__hero">
+        <span class="ticket-detail-dialog__hero-icon"><mat-icon>support_agent</mat-icon></span>
+        <div class="ticket-detail-dialog__hero-content">
+          <span class="ticket-detail-dialog__eyebrow">SOLICITUD DE SOPORTE</span>
+          <h3>{{ ticket.title || 'Ticket de soporte' }}</h3>
+          <mat-chip-set aria-label="Estado y prioridad">
+            <mat-chip class="status-chip" [class]="getBadgeClass(ticket.status)">
+              {{ ticket.status }}
+            </mat-chip>
+            <mat-chip class="status-chip" [class]="getBadgeClass(ticket.priority)">
+              {{ ticket.priority }}
+            </mat-chip>
+          </mat-chip-set>
+        </div>
+      </mat-card>
+
+      <div class="ticket-detail__grid">
+        <mat-card class="ticket-detail-dialog__info-card">
+          <mat-icon>person</mat-icon>
+          <div><span>Solicitante</span><strong>{{ ticket.user_name || 'No disponible' }}</strong></div>
+        </mat-card>
+        <mat-card class="ticket-detail-dialog__info-card">
+          <mat-icon>badge</mat-icon>
+          <div><span>ID de usuario</span><strong>{{ ticket.user_id || '—' }}</strong></div>
+        </mat-card>
+        <mat-card class="ticket-detail-dialog__info-card">
+          <mat-icon>category</mat-icon>
+          <div><span>Categoría</span><strong>{{ ticket.category?.name || ticket.category_name || '—' }}</strong></div>
+        </mat-card>
+        <mat-card class="ticket-detail-dialog__info-card">
+          <mat-icon>location_on</mat-icon>
+          <div><span>Ubicación</span><strong>{{ ticket.location || '—' }}</strong></div>
+        </mat-card>
+        <mat-card class="ticket-detail-dialog__info-card">
+          <mat-icon>assignment_ind</mat-icon>
+          <div>
+            <span>Asignado a</span>
+            <strong>{{ ticket.assigned_to || 'Sin asignar' }}</strong>
+          </div>
+        </mat-card>
+        <mat-card class="ticket-detail-dialog__info-card">
+          <mat-icon>event</mat-icon>
+          <div>
+            <span>Creado</span>
+            <strong>
+              @if (isValidDate(ticket.created_at)) {
+                {{ ticket.created_at | date: 'dd/MM/yyyy HH:mm' }}
+              } @else {
+                {{ ticket.created_at || '—' }}
+              }
+            </strong>
+          </div>
+        </mat-card>
+        @if (ticket.updated_at) {
+          <mat-card class="ticket-detail-dialog__info-card">
+            <mat-icon>update</mat-icon>
+            <div>
+              <span>Última actualización</span>
+              <strong>
+                @if (isValidDate(ticket.updated_at)) {
+                  {{ ticket.updated_at | date: 'dd/MM/yyyy HH:mm' }}
+                } @else {
+                  {{ ticket.updated_at }}
+                }
+              </strong>
+            </div>
+          </mat-card>
+        }
+        @if (ticket.category?.description) {
+          <mat-card class="ticket-detail-dialog__info-card ticket-detail-dialog__info-card--wide">
+            <mat-icon>info</mat-icon>
+            <div><span>Acerca de la categoría</span><strong>{{ ticket.category?.description }}</strong></div>
+          </mat-card>
+        }
+      </div>
+
+      <mat-card class="ticket-detail-dialog__section-card">
+        <h3><mat-icon>description</mat-icon>Descripción del problema</h3>
+        <p>{{ ticket.description }}</p>
+      </mat-card>
+
+      @if (ticket.level1_diagnostic || ticket.diagnostic) {
+        <mat-card class="ticket-detail-dialog__section-card">
+          <h3><mat-icon>troubleshoot</mat-icon>Diagnóstico</h3>
+          <pre>{{ formatDiagnostic(ticket.diagnostic?.decisions || ticket.level1_diagnostic) }}</pre>
+        </mat-card>
+      }
+
+      @if (ticket.cause || ticket.solution) {
+        <mat-card class="ticket-detail-dialog__section-card">
+          <h3><mat-icon>task_alt</mat-icon>Resolución registrada</h3>
+          @if (ticket.cause) {
+            <div class="ticket-detail-dialog__resolution-item">
+              <mat-icon>help_outline</mat-icon>
+              <p><strong>Causa</strong>{{ ticket.cause }}</p>
+            </div>
+          }
+          @if (ticket.solution) {
+            <div class="ticket-detail-dialog__resolution-item">
+              <mat-icon>check_circle_outline</mat-icon>
+              <p><strong>Solución aplicada</strong>{{ ticket.solution }}</p>
+            </div>
+          }
+          @if (ticket.standard_solution) {
+            <div class="ticket-detail-dialog__resolution-item">
+              <mat-icon>rule</mat-icon>
+              <p><strong>Solución estándar</strong>{{ ticket.standard_solution }}</p>
+            </div>
+          }
+        </mat-card>
+      }
+
+      @if (ticket.ai_recommendations?.recommendations?.length) {
+        <mat-card class="ticket-detail-dialog__section-card">
+          <h3><mat-icon>auto_awesome</mat-icon>Recomendaciones de IA</h3>
+          @if (ticket.ai_recommendations?.message) {
+            <p class="ticket-detail-dialog__section-intro">{{ ticket.ai_recommendations?.message }}</p>
+          }
+          @for (recommendation of ticket.ai_recommendations?.recommendations; track $index) {
+            <mat-card class="ticket-detail-dialog__recommendation">
+              <div class="ticket-detail-dialog__recommendation-heading">
+                <mat-icon>lightbulb</mat-icon>
+                <strong>{{ recommendation.cause_label || 'Causa sugerida' }}</strong>
+                <span>{{ recommendation.confidence_level || 'Confianza no disponible' }}</span>
+              </div>
+              @if (recommendation.standard_solution) {
+                <p><strong>Solución sugerida:</strong> {{ recommendation.standard_solution }}</p>
+              }
+              @for (reference of recommendation.technical_solutions_reference || []; track reference) {
+                <p><mat-icon>subdirectory_arrow_right</mat-icon>{{ reference }}</p>
+              }
+            </mat-card>
+          }
+        </mat-card>
+      }
+
+      @if (ticket.logs?.length) {
+        <mat-card class="ticket-detail-dialog__section-card">
+          <h3><mat-icon>history</mat-icon>Historial de actividad</h3>
+          <div class="ticket-detail-dialog__logs">
+            @for (log of ticket.logs; track log.id || $index) {
+              <div class="ticket-detail-dialog__log">
+                <mat-icon>radio_button_checked</mat-icon>
+                <div>
+                  <strong>{{ log.action || 'Actividad' }}</strong>
+                  <span>{{ log.comment || '—' }}</span>
+                  @if (isValidDate(log.created_at)) {
+                    <small>{{ log.created_at | date: 'dd/MM/yyyy HH:mm' }}</small>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </mat-card>
+      }
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="dialog-actions ticket-detail-dialog__actions">
+    @if (canAssignTickets && ticketDetails(); as ticket) {
+      @if (isTicketAssigned(ticket)) {
+        <button mat-stroked-button type="button" class="assign-btn" disabled>
+          <mat-icon>check</mat-icon>
+          <span>Asignado</span>
+        </button>
+        @if (!isTicketResolved(ticket)) {
+          <button
+            mat-raised-button
+            type="button"
+            class="resolve-btn"
+            [disabled]="isTicketResolving(ticket)"
+            (click)="openResolutionDialog(ticket)">
+            <mat-icon>task_alt</mat-icon>
+            <span>Solucionar</span>
+          </button>
+        }
+      } @else {
+        <button
+          mat-stroked-button
+          type="button"
+          class="assign-btn"
+          [disabled]="isTicketAssigning(ticket)"
+          (click)="assignTicket(ticket)">
+          <mat-icon>person_add</mat-icon>
+          @if (isTicketAssigning(ticket)) {
+            <span>Asignando...</span>
+          } @else {
+            <span>Asignarme ticket</span>
+          }
+        </button>
+      }
+    }
+    <button mat-button type="button" (click)="closeTicketDetails()">Cerrar</button>
+  </mat-dialog-actions>
+</ng-template>
+
 <!-- Modal: Editar Estado, Prioridad y Descripción del Ticket -->
 <ng-template #editTicketTemplate>
   <h2 mat-dialog-title class="dialog-title">
@@ -440,6 +620,21 @@
           <mat-error>La causa no puede superar los 255 caracteres.</mat-error>
         }
       </mat-form-field>
+
+      @if (getStandardSolutions(ticketToResolve()).length) {
+        <mat-form-field appearance="outline" class="full-field">
+          <mat-label>Solución estándar de la categoría</mat-label>
+          <mat-icon matPrefix>rule</mat-icon>
+          <mat-select
+            formControlName="standard_solution"
+            (selectionChange)="selectStandardSolution($event.value)">
+            <mat-option value="">Escribir una solución personalizada</mat-option>
+            @for (standardSolution of getStandardSolutions(ticketToResolve()); track standardSolution) {
+              <mat-option [value]="standardSolution">{{ standardSolution }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
 
       <mat-form-field appearance="outline" class="full-field">
         <mat-label>Solución aplicada</mat-label>

@@ -71,6 +71,28 @@ describe('TicketService', () => {
     req.flush(mockHistory);
   });
 
+  it('should consume GET http://127.0.0.1:8001/api/tickets/:id in getTicketById()', () => {
+    service.getTicketById(101).subscribe((res) => {
+      expect(res.data?.id).toBe(101);
+      expect(res.data?.category?.name).toBe('Fallo de Encendido / Hardware');
+    });
+
+    const req = httpMock.expectOne('http://127.0.0.1:8001/api/tickets/101');
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      success: true,
+      data: {
+        id: 101,
+        created_at: '2026-11-07T10:30:00Z',
+        user_name: 'Carlos Ramírez',
+        description: 'Error de acceso a VPN corporativa',
+        priority: 'Media',
+        status: 'ESCALADO',
+        category: { id: 1, name: 'Fallo de Encendido / Hardware' }
+      }
+    });
+  });
+
   it('should consume PUT http://127.0.0.1:8001/api/tickets/:id in updateTicket()', () => {
     const payload: UpdateTicketPayload = {
       priority: 'Alta Prioridad',

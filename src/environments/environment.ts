@@ -3,5 +3,7 @@ export const environment = {
   // URL del microservicio de Usuarios (Autenticación)
   userApiUrl: 'http://127.0.0.1:8000/api',
   // URL del microservicio de Tickets (Categorías, diagnósticos, etc.)
-  ticketApiUrl: 'http://127.0.0.1:8001/api'
+  ticketApiUrl: 'http://127.0.0.1:8001/api',
+  // URL del microservicio de entrenamiento del modelo de IA
+  aiTrainingApiUrl: 'http://127.0.0.1:8002'
 };

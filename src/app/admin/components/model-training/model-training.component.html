@@ -1,0 +1,97 @@
+<section class="training-page">
+  <mat-card class="training-card">
+    <header class="training-hero">
+      <div class="training-hero__icon">
+        <mat-icon>psychology</mat-icon>
+      </div>
+      <div>
+        <span class="training-eyebrow">ADMINISTRACIÓN · INTELIGENCIA ARTIFICIAL</span>
+        <h1>Entrenar modelo</h1>
+        <p>
+          Actualiza el modelo de recomendaciones con los casos históricos disponibles.
+          El servicio indexará los casos válidos y reportará las categorías incluidas.
+        </p>
+      </div>
+    </header>
+
+    <mat-card-content>
+      <div class="training-info">
+        <mat-icon>info</mat-icon>
+        <p>
+          El entrenamiento se ejecuta en el microservicio de IA. No necesitas enviar datos:
+          el servicio procesa automáticamente los casos guardados.
+        </p>
+      </div>
+
+      <button
+        mat-raised-button
+        type="button"
+        class="train-button"
+        [disabled]="isTraining()"
+        (click)="trainModel()">
+        <mat-icon [class.spinning]="isTraining()">
+          {{ isTraining() ? 'sync' : 'model_training' }}
+        </mat-icon>
+        <span>{{ isTraining() ? 'Entrenando modelo...' : 'Entrenar modelo de IA' }}</span>
+      </button>
+
+      @if (errorMessage(); as message) {
+        <mat-card class="training-message training-message--error" role="alert">
+          <mat-icon>error_outline</mat-icon>
+          <p>{{ message }}</p>
+        </mat-card>
+      }
+
+      @if (trainingResult(); as result) {
+        <section class="result-section" aria-live="polite">
+          <div class="result-heading">
+            <mat-icon>check_circle</mat-icon>
+            <div>
+              <h2>Entrenamiento completado</h2>
+              <p>El servicio de IA procesó los casos correctamente.</p>
+            </div>
+          </div>
+
+          <div class="result-grid">
+            <mat-card class="result-card">
+              <mat-icon>dataset</mat-icon>
+              <span>Casos indexados</span>
+              <strong>{{ result.indexed_cases }}</strong>
+            </mat-card>
+            <mat-card class="result-card">
+              <mat-icon>category</mat-icon>
+              <span>Sin categoría</span>
+              <strong>{{ result.skipped_without_category }}</strong>
+            </mat-card>
+            <mat-card class="result-card">
+              <mat-icon>filter_alt</mat-icon>
+              <span>Casos omitidos</span>
+              <strong>{{ result.skipped_noisy }}</strong>
+            </mat-card>
+            <mat-card class="result-card">
+              <mat-icon>memory</mat-icon>
+              <span>Versión del modelo</span>
+              <strong>{{ result.model_version }}</strong>
+            </mat-card>
+          </div>
+
+          <mat-card class="covered-categories">
+            <div class="covered-categories__heading">
+              <mat-icon>checklist</mat-icon>
+              <h3>Categorías incluidas</h3>
+            </div>
+            @if (result.categories_covered.length) {
+              <mat-chip-set aria-label="Categorías cubiertas por el modelo">
+                @for (categoryId of result.categories_covered; track categoryId) {
+                  <mat-chip>Categoría {{ categoryId }}</mat-chip>
+                }
+              </mat-chip-set>
+            } @else {
+              <p>El entrenamiento no incluyó categorías.</p>
+            }
+          </mat-card>
+        </section>
+      }
+    </mat-card-content>
+  </mat-card>
+</section>

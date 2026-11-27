@@ -6,15 +6,47 @@ import { environment } from '../../../environments/environment';
 export interface SupportTicket {
   id: number | string;
   created_at: string;
-  user_name: string;
+  user_name: string | null;
   title?: string;
   description: string;
   priority: string;
   status: string;
   assigned_to?: number | string | null;
+  user_id?: number | string;
+  updated_at?: string;
+  cause?: string | null;
+  solution?: string | null;
+  standard_solution?: string | null;
   location?: string;
-  category_id?: number;
+  category_id?: number | string;
   category_name?: string;
+  category?: {
+    id?: number | string;
+    name?: string;
+    description?: string;
+  } | null;
+  logs?: {
+    id?: number | string;
+    action?: string;
+    comment?: string | null;
+    created_at?: string;
+    user_id?: number | string;
+  }[];
+  diagnostic?: {
+    id?: number | string;
+    decisions?: Record<string, unknown>;
+    created_at?: string;
+  } | null;
+  ai_recommendations?: {
+    status?: string;
+    message?: string;
+    recommendations?: {
+      cause_label?: string;
+      confidence_level?: string;
+      standard_solution?: string;
+      technical_solutions_reference?: string[];
+    }[];
+  } | null;
   level1_diagnostic?: unknown;
   user?: {
     id?: number | string;
@@ -42,6 +74,7 @@ export interface UpdateTicketPayload {
 export interface TicketResolutionPayload {
   cause: string;
   solution: string;
+  standard_solution?: string;
 }
 
 export interface TicketMutationResponse {
@@ -54,6 +87,12 @@ export interface TicketResolutionResponse {
   success?: boolean;
   message?: string;
   data?: Partial<SupportTicket>;
+}
+
+export interface TicketDetailResponse {
+  success?: boolean;
+  message?: string;
+  data?: SupportTicket;
 }
 
 export interface TicketHistoryItem {
@@ -99,6 +138,14 @@ export class TicketService {
     return this.http.get<ApiCollectionResponse<SupportTicket> | SupportTicket[]>(
       `${this.apiUrl}/tickets`
     );
+  }
+
+  /**
+   * Obtiene toda la información de un ticket.
+   * Consume: GET http://127.0.0.1:8001/api/tickets/:id
+   */
+  getTicketById(id: number | string): Observable<TicketDetailResponse> {
+    return this.http.get<TicketDetailResponse>(`${this.apiUrl}/tickets/${id}`);
   }
 
   /**

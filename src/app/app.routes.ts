@@ -85,7 +85,15 @@ export const routes: Routes = [
             (m) => m.TicketListComponent
           )
       },
-      { path: 'admin/train-model', redirectTo: 'customer/support', pathMatch: 'full' }
+      {
+        path: 'admin/train-model',
+        canActivate: [roleGuard],
+        data: { roles: ['admin'] },
+        loadComponent: () =>
+          import('./admin/components/model-training/model-training.component').then(
+            (m) => m.ModelTrainingComponent
+          )
+      }
     ]
   },
 
